@@ -30,19 +30,18 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function CalendarScreen() {
   const { selectedRange, setDateRange } = useStepStore();
+  const today = new Date();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(
-    selectedRange.from
+    today
   );
-  const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(
-    selectedRange.to
-  );
+  const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(today);
 
   // Get days in current month view
-  const getDaysInMonth = (year: number, month: number) => {
+  const getDaysInMonth = (year: number, month: number): (Date | null)[] => {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDayOfMonth = new Date(year, month, 1).getDay();
-    const days = [];
+    const days: (Date | null)[] = [];
 
     // Add empty slots for days before the first of the month
     for (let i = 0; i < firstDayOfMonth; i++) {
@@ -57,7 +56,7 @@ export default function CalendarScreen() {
     return days;
   };
 
-  const days = getDaysInMonth(
+  const days: (Date | null)[] = getDaysInMonth(
     currentDate.getFullYear(),
     currentDate.getMonth()
   );
@@ -209,7 +208,7 @@ export default function CalendarScreen() {
               ]}
               onPress={() => day && handleDayPress(day)}
               disabled={!day}>
-              {day && (
+              {day instanceof Date && !isNaN(day.getTime()) && (
                 <Text
                   style={[
                     styles.dayText,

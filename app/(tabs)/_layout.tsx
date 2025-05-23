@@ -1,11 +1,9 @@
 import React from "react";
 import { Tabs, Link } from "expo-router";
-import { StyleSheet, Pressable } from "react-native";
+import { Pressable } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import Colors from "../../constants/Colors";
 import { useColorScheme } from "../../components/useColorScheme";
-import { useClientOnlyValue } from "../../components/useClientOnlyValue";
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -14,7 +12,7 @@ function TabBarIcon(props: {
 }) {
   return (
     <MaterialIcons
-      size={28}
+      size={26}
       style={{ marginBottom: -3 }}
       {...props}
     />
@@ -27,13 +25,11 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: Colors[colorScheme ?? "dark"].tint,
+        
       }}>
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => (
@@ -63,7 +59,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="path-tracking"
         options={{
-          title: "Track",
+          title: "Path Tracking",
           tabBarIcon: ({ color }) => (
             <TabBarIcon
               name="directions-run"

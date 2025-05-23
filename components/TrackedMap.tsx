@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { RootTagContext, StyleSheet, View } from "react-native";
 import MapView, {
   Marker,
   Polyline,
@@ -30,7 +30,7 @@ const TrackedMap = ({
   readOnly = false,
   startMarker = true,
   endMarker = true,
-  followUser = false,
+  followUser = true,
   initialRegion,
 }: TrackedMapProps) => {
   const mapRef = useRef<MapView>(null);
@@ -135,3 +135,4 @@ const styles = StyleSheet.create({
 });
 
 export default TrackedMap;
+

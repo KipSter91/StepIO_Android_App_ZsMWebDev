@@ -13,6 +13,25 @@ import * as Haptics from "expo-haptics";
 import { MaterialIcons } from "@expo/vector-icons";
 import useStepStore from "../../src/store/useStepStore";
 import TrackedMap from "../../components/TrackedMap";
+import * as TaskManager from "expo-task-manager";
+
+const LOCATION_TASK_NAME = "location-tracking";
+
+TaskManager.defineTask(
+  LOCATION_TASK_NAME,
+  async ({ data, error }: TaskManager.TaskManagerTaskBody<any>) => {
+    if (error) {
+      // Error handling
+      return;
+    }
+    if (data && data.locations) {
+      const { locations } = data;
+      // TODO: Optionally handle background locations here
+      // You can update a store, send to server, or save to storage
+    }
+    return Promise.resolve();
+  }
+);
 
 export default function PathTrackingScreen() {
   const {
@@ -41,15 +60,15 @@ export default function PathTrackingScreen() {
 
     // Clean up when component unmounts
     return () => {
-      Location.stopLocationUpdatesAsync("location-tracking");
+      Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
     };
   }, []);
 
   // Start location tracking
   const startLocationUpdates = async () => {
     try {
-      await Location.startLocationUpdatesAsync("location-tracking", {
-        accuracy: Location.Accuracy.BestForNavigation,
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.Highest,
         timeInterval: 5000,
         distanceInterval: 5, // minimum distance in meters
         showsBackgroundLocationIndicator: true,
@@ -61,7 +80,7 @@ export default function PathTrackingScreen() {
 
       // Subscribe to location updates
       Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 5000 },
+        { accuracy: Location.Accuracy.Highest, timeInterval: 5000 },
         (location) => {
           if (activeSession) {
             const newCoord = {
@@ -108,7 +127,7 @@ export default function PathTrackingScreen() {
       stopTracking();
 
       // Stop location updates
-      await Location.stopLocationUpdatesAsync("location-tracking");
+      await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
     } catch (error) {
       console.error("Error stopping tracking:", error);
       Alert.alert("Error", "Failed to stop path tracking");
@@ -194,6 +213,7 @@ export default function PathTrackingScreen() {
           </TouchableOpacity>
         )}
       </View>
+      <View/>
     </View>
   );
 }

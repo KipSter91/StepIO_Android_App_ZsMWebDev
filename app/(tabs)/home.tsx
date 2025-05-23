@@ -1,9 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { StyleSheet, View, Text, ScrollView } from "react-native";
 import useStepStore from "../../src/store/useStepStore";
+import { requestAllPermissions } from "@/src/utils/permissions";
+import { StatusBar } from "expo-status-bar";
 
 export default function HomeScreen() {
   const { userProfile } = useStepStore();
+
+  useEffect(() => {
+    // Request permissions when HomeScreen is mounted
+    requestAllPermissions();
+  }, []);
+
   // In a real app, this would come from a native step counter
   const todaySteps = 7823;
   const goalProgress = Math.min(
@@ -13,6 +21,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <StatusBar style="dark" />
       <View style={styles.header}>
         <Text style={styles.greeting}>
           Hey, {userProfile?.firstName || "there"}
