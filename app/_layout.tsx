@@ -7,7 +7,7 @@ import {
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import * as SplashScreen from 'expo-splash-screen';
+import * as SplashScreen from "expo-splash-screen";
 import { useColorScheme } from "@/components/useColorScheme";
 
 export {
@@ -35,11 +35,7 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
-  // Csak akkor rendereljük a navigációt, ha a fontok betöltődtek
-  if (!loaded) {
-    return null;
-  }
-
+  // Always render the navigator, even when fonts are loading
   return <RootLayoutNav />;
 }
 

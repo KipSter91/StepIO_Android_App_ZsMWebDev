@@ -7,16 +7,18 @@ import {
   Image,
   SafeAreaView,
   ScrollView,
-  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme"; // Corrected path
+import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
+import { useStepStore } from "../../src/store/useStepStore";
 
 export default function WelcomeScreen() {
+  const { initializationStatus } = useStepStore();
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
@@ -26,7 +28,7 @@ export default function WelcomeScreen() {
           entering={FadeIn.duration(800).delay(300)}>
           <View style={styles.logoContainer}>
             <Image
-              source={require("@/assets/images/stepio-logo.webp")} // Adjusted path
+              source={require("@/assets/images/stepio-logo.webp")}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -39,18 +41,36 @@ export default function WelcomeScreen() {
             goals with StepIO.
           </Text>
 
+          {/* Show initialization status if there are issues */}
+          {initializationStatus && !initializationStatus.hasPermissions && (
+            <View style={styles.warningContainer}>
+              <Ionicons
+                name="warning-outline"
+                size={20}
+                color={COLORS.warning}
+              />
+              <Text style={styles.warningText}>
+                Some permissions are required for step tracking to work
+                properly.
+              </Text>
+            </View>
+          )}
+
           <View style={styles.featuresContainer}>
             <FeatureItem
-              iconName="stats-chart" // Using Ionicons name
+              iconName="stats-chart"
               text="Track and visualize your daily activity"
+              isAvailable={initializationStatus?.isInitialized || false}
             />
             <FeatureItem
-              iconName="map-outline" // Using Ionicons name
+              iconName="map-outline"
               text="Map your walking routes and save them for later"
+              isAvailable={initializationStatus?.hasPermissions || false}
             />
             <FeatureItem
-              iconName="trophy-outline" // Using Ionicons name
+              iconName="trophy-outline"
               text="Set goals and celebrate achievements"
+              isAvailable={true}
             />
           </View>
 
@@ -79,19 +99,35 @@ export default function WelcomeScreen() {
 function FeatureItem({
   iconName,
   text,
+  isAvailable = true,
 }: {
   iconName: keyof typeof Ionicons.glyphMap;
   text: string;
+  isAvailable?: boolean;
 }) {
   return (
-    <View style={styles.featureItem}>
+    <View
+      style={[styles.featureItem, !isAvailable && styles.featureItemDisabled]}>
       <Ionicons
         name={iconName}
         size={24}
-        color={COLORS.primary}
+        color={isAvailable ? COLORS.primary : COLORS.darkMuted}
         style={styles.featureIcon}
       />
-      <Text style={styles.featureText}>{text}</Text>
+      <Text
+        style={[
+          styles.featureText,
+          !isAvailable && styles.featureTextDisabled,
+        ]}>
+        {text}
+      </Text>
+      {!isAvailable && (
+        <Ionicons
+          name="lock-closed"
+          size={16}
+          color={COLORS.darkMuted}
+        />
+      )}
     </View>
   );
 }
@@ -138,13 +174,33 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
     paddingHorizontal: SPACING.md,
   },
+  warningContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.darkCard,
+    padding: SPACING.md,
+    borderRadius: 8,
+    marginBottom: SPACING.lg,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.warning,
+  },
+  warningText: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.warning,
+    flex: 1,
+    marginLeft: SPACING.xs,
+  },
   featureItem: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: SPACING.md,
-    backgroundColor: COLORS.darkCard, // Changed to COLORS.darkCard
+    backgroundColor: COLORS.darkCard,
     padding: SPACING.md,
     borderRadius: 12,
+  },
+  featureItemDisabled: {
+    opacity: 0.6,
+    backgroundColor: COLORS.darkBackground,
   },
   featureIcon: {
     marginRight: SPACING.md,
@@ -153,6 +209,9 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.sm,
     color: COLORS.white,
     flex: 1,
+  },
+  featureTextDisabled: {
+    color: COLORS.darkMuted,
   },
   button: {
     height: 50,

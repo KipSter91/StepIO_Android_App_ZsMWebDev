@@ -1,19 +1,35 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { StyleSheet, View, Text, ScrollView } from "react-native";
 import useStepStore from "../../src/store/useStepStore";
-import { requestAllPermissions } from "@/src/utils/permissions";
 import { StatusBar } from "expo-status-bar";
+import { nativeStepCounterService } from "../../src/services/nativeStepCounterService";
 
 export default function HomeScreen() {
-  const { userProfile } = useStepStore();
+  const { userProfile, initializationStatus } = useStepStore();
+  const [todaySteps, setTodaySteps] = useState(0);
 
   useEffect(() => {
-    // Request permissions when HomeScreen is mounted
-    requestAllPermissions();
-  }, []);
+    // Only proceed if app is properly initialized
+    if (
+      !initializationStatus?.isInitialized ||
+      !initializationStatus?.hasPermissions
+    ) {
+      return;
+    }
 
-  // In a real app, this would come from a native step counter
-  const todaySteps = 7823;
+    // Fetch initial step count
+    nativeStepCounterService.getTodaySteps().then(setTodaySteps);
+
+    // Subscribe to live step updates
+    const stepUpdateHandler = (steps: number) => {
+      setTodaySteps(steps);
+    };
+    nativeStepCounterService.onStepUpdate(stepUpdateHandler);
+    return () => {
+      nativeStepCounterService.removeStepUpdateListener(stepUpdateHandler);
+    };
+  }, [initializationStatus]);
+
   const goalProgress = Math.min(
     todaySteps / (userProfile?.dailyStepGoal || 10000),
     1

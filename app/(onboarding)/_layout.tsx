@@ -1,4 +1,4 @@
-import { Stack, useGlobalSearchParams } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { View } from "react-native";
 import { COLORS } from "../../styles/theme"; // Import COLORS

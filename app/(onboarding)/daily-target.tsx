@@ -6,11 +6,10 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn, SlideInRight } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import useStepStore from "../../src/store/useStepStore";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";

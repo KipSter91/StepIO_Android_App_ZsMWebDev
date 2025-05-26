@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  appInitializationService,
+  InitializationStatus,
+} from "../services/appInitializationService";
 
 export interface StepSession {
   id: string;
@@ -31,6 +35,10 @@ interface StepStore {
   selectedRange: { from: Date; to: Date };
   isTracking: boolean;
 
+  // App initialization state
+  initializationStatus: InitializationStatus | null;
+  isAppReady: boolean;
+
   // Session actions
   addSession: (session: StepSession) => void;
   updateActiveSession: (data: Partial<StepSession>) => void;
@@ -41,10 +49,13 @@ interface StepStore {
   // User profile actions
   updateUserProfile: (data: Partial<UserProfile>) => void;
   completeOnboarding: () => void;
-
   // Chart actions
   setChartMode: (mode: ChartMode) => void;
   setDateRange: (from: Date, to: Date) => void;
+
+  // App initialization actions
+  initializeApp: () => Promise<void>;
+  setInitializationStatus: (status: InitializationStatus) => void;
 }
 
 const defaultUserProfile: UserProfile = {
@@ -68,6 +79,10 @@ export const useStepStore = create<StepStore>()(
         from: new Date(),
         to: new Date(),
       },
+
+      // App initialization state
+      initializationStatus: null,
+      isAppReady: false,
 
       // Session actions
       addSession: (session) => {
@@ -138,10 +153,38 @@ export const useStepStore = create<StepStore>()(
       setChartMode: (mode) => {
         set(() => ({ chartMode: mode }));
       },
-
       setDateRange: (from, to) => {
         set(() => ({
           selectedRange: { from, to },
+        }));
+      },
+
+      // App initialization actions
+      initializeApp: async () => {
+        try {
+          const status = await appInitializationService.initialize();
+          set(() => ({
+            initializationStatus: status,
+            isAppReady: status.isInitialized,
+          }));
+        } catch (error) {
+          console.error("[Store] App initialization failed:", error);
+          set(() => ({
+            initializationStatus: {
+              isInitialized: false,
+              hasPermissions: false,
+              isTrackingActive: false,
+              error: "Initialization failed",
+            },
+            isAppReady: false,
+          }));
+        }
+      },
+
+      setInitializationStatus: (status) => {
+        set(() => ({
+          initializationStatus: status,
+          isAppReady: status.isInitialized,
         }));
       },
     }),
