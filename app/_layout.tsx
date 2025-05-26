@@ -8,7 +8,10 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 import * as SplashScreen from "expo-splash-screen";
-import { useColorScheme } from "@/components/useColorScheme";
+import * as NavigationBar from "expo-navigation-bar";
+import { StatusBar } from "expo-status-bar";
+import { Platform } from "react-native";
+import { COLORS } from "@/styles/theme";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -35,15 +38,32 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  // Set navigation bar style for Android
+  useEffect(() => {
+    const initializeNavigationBar = async () => {
+      // Native modulok inicializálása
+      if (Platform.OS === "android") {
+        await NavigationBar.setBackgroundColorAsync(COLORS.darkBackground);
+        await NavigationBar.setButtonStyleAsync("light");
+      }
+    };
+
+    initializeNavigationBar();
+  }, []);
+
   // Always render the navigator, even when fonts are loading
   return <RootLayoutNav />;
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={DarkTheme}>
+      <StatusBar
+        style="light"
+        backgroundColor="#0F1420"
+        translucent={false}
+      />
       <Stack>
         <Stack.Screen
           name="index"

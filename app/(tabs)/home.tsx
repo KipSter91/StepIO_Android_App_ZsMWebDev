@@ -1,12 +1,36 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, ScrollView } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  RefreshControl,
+} from "react-native";
 import useStepStore from "../../src/store/useStepStore";
 import { StatusBar } from "expo-status-bar";
 import { nativeStepCounterService } from "../../src/services/nativeStepCounterService";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  cancelAnimation,
+  runOnJS,
+} from "react-native-reanimated";
+import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
+import { WeatherWidget } from "../../components/WeatherWidget";
 
 export default function HomeScreen() {
   const { userProfile, initializationStatus } = useStepStore();
   const [todaySteps, setTodaySteps] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [displayedSteps, setDisplayedSteps] = useState(0);
+
+  // Animation value for step count
+  const animatedSteps = useSharedValue(0);
 
   useEffect(() => {
     // Only proceed if app is properly initialized
@@ -30,222 +54,297 @@ export default function HomeScreen() {
     };
   }, [initializationStatus]);
 
+  // Animated step count logic
+  useEffect(() => {
+    // Cancel any previous animation
+    cancelAnimation(animatedSteps);
+    // Animate and update JS state on every frame
+    animatedSteps.value = withTiming(
+      todaySteps,
+      { duration: 600 },
+      (finished) => {
+        if (finished) runOnJS(setDisplayedSteps)(todaySteps);
+      }
+    );
+    // Animation frame update
+    const frame = () => {
+      runOnJS(setDisplayedSteps)(Math.round(animatedSteps.value));
+      if (Math.round(animatedSteps.value) !== todaySteps) {
+        requestAnimationFrame(frame);
+      }
+    };
+    frame();
+  }, [todaySteps]);
+
+  const formatNumber = (num: number): string => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
   const goalProgress = Math.min(
     todaySteps / (userProfile?.dailyStepGoal || 10000),
     1
   );
 
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const steps = await nativeStepCounterService.getTodaySteps();
+      setTodaySteps(steps);
+    } catch (error) {
+      console.error("Failed to refresh step data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <StatusBar style="dark" />
-      <View style={styles.header}>
-        <Text style={styles.greeting}>
-          Hey, {userProfile?.firstName || "there"}
-        </Text>
-        <Text style={styles.date}>
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </Text>
+    <View style={styles.container}>
+      <StatusBar style="light" />
+
+      {/* Background with logo */}
+      <View style={styles.backgroundContainer}>
+        <Image
+          source={require("@/assets/images/stepio-background.png")}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
       </View>
 
-      <View style={styles.progressContainer}>
-        <View style={styles.progressCircle}>
-          <View
-            style={[styles.progressArc, { width: `${goalProgress * 100}%` }]}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.primary}
           />
-
-          <View style={styles.statsContainer}>
-            <Text style={styles.stepsCount}>{todaySteps.toLocaleString()}</Text>
-            <Text style={styles.stepsLabel}>steps</Text>
-            <Text style={styles.goalText}>
-              Goal: {userProfile.dailyStepGoal?.toLocaleString() || "10,000"}{" "}
-              steps
-            </Text>
-            <Text style={styles.percentText}>
-              {Math.round(goalProgress * 100)}% completed
-            </Text>
-          </View>
+        }>
+        {/* Welcome section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeText}>
+            Welcome, {userProfile?.firstName || "there"}
+          </Text>
+          <Text style={styles.welcomeSubtitle}>You step, we sync.</Text>
         </View>
-      </View>
 
-      <View style={styles.additionalStats}>
-        <StatBox
-          title="Distance"
-          value={(todaySteps * 0.0008).toFixed(2)}
-          unit="km"
-        />
-        <StatBox
-          title="Calories"
-          value={(todaySteps * 0.04).toFixed(0)}
-          unit="kcal"
-        />
-        <StatBox
-          title="Duration"
-          value={(todaySteps * 0.0011).toFixed(1)}
-          unit="hrs"
-        />
-      </View>
+        {/* Weather widget */}
+        <WeatherWidget />
 
-      <View style={styles.motivationContainer}>
-        <Text style={styles.motivationTitle}>Motivation</Text>
-        <Text style={styles.motivationText}>
-          "A journey of a thousand miles begins with a single step."
-        </Text>
-      </View>
-    </ScrollView>
-  );
-}
+        {/* Today's stats card */}
+        <View style={styles.statsCard}>
+          <LinearGradient
+            colors={["rgba(19, 24, 36, 0.75)", "rgba(15, 20, 30, 0.75)"]}
+            style={styles.cardGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}>
+            <View style={styles.statsHeader}>
+              <View>
+                <Text style={styles.statsLabel}>TODAY</Text>
+                <Text style={styles.stepsCount}>
+                  {formatNumber(displayedSteps)}
+                </Text>
+              </View>
+              <View style={styles.statsIcon}>
+                <LinearGradient
+                  colors={GRADIENTS.primaryToSecondary}
+                  style={styles.iconBackground}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}>
+                  <Ionicons
+                    name="footsteps"
+                    size={28}
+                    color={COLORS.white}
+                  />
+                </LinearGradient>
+              </View>
+            </View>
 
-function StatBox({
-  title,
-  value,
-  unit,
-}: {
-  title: string;
-  value: string;
-  unit: string;
-}) {
-  return (
-    <View style={styles.statBox}>
-      <View style={styles.statHeader}>
-        <Text style={styles.statTitle}>{title}</Text>
-      </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statUnit}>{unit}</Text>
-      </View>
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.min(goalProgress * 100, 100)}%`,
+                      backgroundColor:
+                        goalProgress >= 1 ? COLORS.success : COLORS.primary,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+
+            <View style={styles.statsDetails}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {(goalProgress * 100).toFixed(0)}%
+                </Text>
+                <Text style={styles.statLabel}>of goal</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {(todaySteps / 1300).toFixed(1)}km
+                </Text>
+                <Text style={styles.statLabel}>distance</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {Math.round(todaySteps * 0.04)}
+                </Text>
+                <Text style={styles.statLabel}>calories</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <View style={styles.streakValue}>
+                  <Ionicons
+                    name="flame"
+                    size={14}
+                    color={COLORS.warning}
+                  />
+                  <Text style={styles.streakText}>
+                    {userProfile?.dailyStepGoal
+                      ? Math.floor(todaySteps / userProfile.dailyStepGoal)
+                      : 0}
+                  </Text>
+                </View>
+                <Text style={styles.statLabel}>streak</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Main container
   container: {
-    flexGrow: 1,
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 24,
+    flex: 1,
+    backgroundColor: COLORS.darkBackground,
   },
-  header: {
-    marginBottom: 32,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  date: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 4,
-  },
-  progressContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 40,
-  },
-  progressCircle: {
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: "#f0f0f0",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    overflow: "hidden",
-  },
-  progressArc: {
+
+  // Background elements
+  backgroundContainer: {
     position: "absolute",
-    height: "100%",
-    backgroundColor: "#3498db",
     top: 0,
     left: 0,
+    right: 0,
+    bottom: 0,
   },
-  statsContainer: {
-    alignItems: "center",
-    backgroundColor: "white",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    justifyContent: "center",
-    zIndex: 1,
+  backgroundImage: {
+    width: "100%",
+    height: "100%",
+    opacity: 0.3,
   },
-  stepsCount: {
-    fontSize: 48,
-    fontWeight: "bold",
-    color: "#333",
+
+  // Scroll view content
+  scrollContent: {
+    paddingTop: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.xl,
   },
-  stepsLabel: {
-    fontSize: 18,
-    color: "#666",
-    marginTop: -4,
+
+  // Welcome section
+  welcomeSection: {
+    marginBottom: SPACING.lg,
   },
-  goalText: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 8,
+  welcomeText: {
+    fontSize: FONTS.sizes.xxl,
+    color: COLORS.white,
+    fontWeight: "700",
+    fontFamily: FONTS.cyber?.fontFamily || "System",
   },
-  percentText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#3498db",
-    marginTop: 4,
+  welcomeSubtitle: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.darkMuted,
+    marginTop: SPACING.xs,
   },
-  additionalStats: {
+
+  // Stats card
+  statsCard: {
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: SPACING.xl,
+    borderWidth: 1,
+    borderColor: "rgba(0, 255, 204, 0.3)",
+  },
+  cardGradient: {
+    padding: SPACING.lg,
+    borderRadius: 16,
+  },
+  statsHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 40,
+    alignItems: "center",
+    marginBottom: SPACING.md,
   },
-  statBox: {
-    backgroundColor: "#f7f9fc",
-    width: "30%",
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+  statsLabel: {
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.darkMuted,
+    fontWeight: "600",
   },
-  statHeader: {
-    marginBottom: 8,
+  stepsCount: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: COLORS.white,
   },
-  statTitle: {
-    fontSize: 14,
-    color: "#666",
+  statsIcon: {
+    width: 48,
+    height: 48,
   },
-  statContent: {
+  iconBackground: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  // Progress bar
+  progressContainer: {
+    marginBottom: SPACING.md,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: COLORS.xpBackground,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+
+  // Stats details
+  statsDetails: {
     flexDirection: "row",
-    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginBottom: SPACING.md,
+  },
+  statItem: {
+    alignItems: "center",
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#333",
-    marginRight: 4,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
+    fontWeight: "600",
   },
-  statUnit: {
-    fontSize: 14,
-    color: "#666",
+  statLabel: {
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.darkMuted,
   },
-  motivationContainer: {
-    backgroundColor: "#f7f9fc",
-    borderRadius: 12,
-    padding: 20,
+  streakValue: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  motivationTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-  },
-  motivationText: {
-    fontSize: 16,
-    color: "#444",
-    fontStyle: "italic",
-    lineHeight: 24,
+  streakText: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.warning,
+    fontWeight: "600",
+    marginLeft: 2,
   },
 });

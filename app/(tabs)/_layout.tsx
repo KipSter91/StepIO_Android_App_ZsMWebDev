@@ -1,18 +1,17 @@
 import React from "react";
 import { Tabs, Link } from "expo-router";
 import { Pressable } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import Colors from "../../constants/Colors";
-import { useColorScheme } from "../../components/useColorScheme";
+import { Ionicons } from "@expo/vector-icons";
+import { COLORS } from "../../styles/theme";
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
-  name: React.ComponentProps<typeof MaterialIcons>["name"];
+  name: React.ComponentProps<typeof Ionicons>["name"];
   color: string;
 }) {
   return (
-    <MaterialIcons
-      size={26}
+    <Ionicons
+      size={24}
       style={{ marginBottom: -3 }}
       {...props}
     />
@@ -20,13 +19,33 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? "dark"].tint,
-        
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.darkMuted,
+        tabBarStyle: {
+          backgroundColor: COLORS.darkCard,
+          borderTopColor: "rgba(0, 255, 204, 0.2)",
+          borderTopWidth: 1,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "500",
+        },
+        headerStyle: {
+          backgroundColor: COLORS.darkBackground,
+          borderBottomColor: "rgba(0, 255, 204, 0.2)",
+          borderBottomWidth: 1,
+        },
+        headerTintColor: COLORS.white,
+        headerTitleStyle: {
+          fontWeight: "600",
+          color: COLORS.white,
+        },
       }}>
       <Tabs.Screen
         name="home"
@@ -44,10 +63,10 @@ export default function TabLayout() {
               asChild>
               <Pressable>
                 {({ pressed }) => (
-                  <MaterialIcons
-                    name="calendar-today"
-                    size={25}
-                    color={Colors[colorScheme ?? "light"].text}
+                  <Ionicons
+                    name="calendar-outline"
+                    size={24}
+                    color={COLORS.primary}
                     style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
                   />
                 )}
@@ -62,7 +81,7 @@ export default function TabLayout() {
           title: "Path Tracking",
           tabBarIcon: ({ color }) => (
             <TabBarIcon
-              name="directions-run"
+              name="footsteps"
               color={color}
             />
           ),
@@ -74,7 +93,7 @@ export default function TabLayout() {
           title: "Stats",
           tabBarIcon: ({ color }) => (
             <TabBarIcon
-              name="assessment"
+              name="stats-chart"
               color={color}
             />
           ),
@@ -86,7 +105,7 @@ export default function TabLayout() {
           title: "Activities",
           tabBarIcon: ({ color }) => (
             <TabBarIcon
-              name="view-list"
+              name="list"
               color={color}
             />
           ),

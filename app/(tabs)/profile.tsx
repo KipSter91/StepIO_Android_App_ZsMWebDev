@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import useStepStore from "../../src/store/useStepStore";
 
@@ -69,175 +70,183 @@ export default function ProfileScreen() {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
-
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {userProfile.firstName?.[0]?.toUpperCase() || "U"}
-          </Text>
-        </View>
-        <Text style={styles.username}>
-          {userProfile.firstName} {userProfile.lastName}
-        </Text>
-        <Text style={styles.userEmail}>{userProfile.email}</Text>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Personal Information</Text>
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => setEditing(!editing)}>
-            <Text style={styles.editButtonText}>
-              {editing ? "Cancel" : "Edit"}
+    <>
+      <StatusBar style="light" />
+      <ScrollView style={styles.container}>
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {userProfile.firstName?.[0]?.toUpperCase() || "U"}
             </Text>
-          </TouchableOpacity>
+          </View>
+          <Text style={styles.username}>
+            {userProfile.firstName} {userProfile.lastName}
+          </Text>
+          <Text style={styles.userEmail}>{userProfile.email}</Text>
         </View>
 
-        {editing ? (
-          <View style={styles.editForm}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>First Name</Text>
-              <TextInput
-                style={styles.input}
-                value={firstName}
-                onChangeText={setFirstName}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Last Name</Text>
-              <TextInput
-                style={styles.input}
-                value={lastName}
-                onChangeText={setLastName}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
-              <TextInput
-                style={styles.input}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Age</Text>
-              <TextInput
-                style={styles.input}
-                value={age}
-                onChangeText={setAge}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Daily Step Goal</Text>
-              <TextInput
-                style={styles.input}
-                value={dailyStepGoal}
-                onChangeText={setDailyStepGoal}
-                keyboardType="numeric"
-              />
-            </View>
-
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Personal Information</Text>
             <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}>
-              <Text style={styles.saveButtonText}>Save Changes</Text>
+              style={styles.editButton}
+              onPress={() => setEditing(!editing)}>
+              <Text style={styles.editButtonText}>
+                {editing ? "Cancel" : "Edit"}
+              </Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <View>
-            <InfoRow
-              label="First Name"
-              value={userProfile.firstName}
-            />
-            <InfoRow
-              label="Last Name"
-              value={userProfile.lastName}
-            />
-            <InfoRow
-              label="Email"
-              value={userProfile.email}
-            />
-            <InfoRow
-              label="Age"
-              value={userProfile.age.toString()}
-            />
-            <InfoRow
-              label="Daily Step Goal"
-              value={`${userProfile.dailyStepGoal.toLocaleString()} steps`}
-            />
-          </View>
-        )}
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Settings</Text>
-        <SettingRow
-          icon="notifications"
-          label="Notifications"
-          value="On"
-          onPress={() =>
-            Alert.alert(
-              "Coming soon",
-              "Notification settings will be available soon."
-            )
-          }
-        />
-        <SettingRow
-          icon="language"
-          label="Language"
-          value="English"
-          onPress={() =>
-            Alert.alert(
-              "Coming soon",
-              "Language settings will be available soon."
-            )
-          }
-        />
-        <SettingRow
-          icon="color-lens"
-          label="Theme"
-          value="Light"
-          onPress={() =>
-            Alert.alert("Coming soon", "Theme settings will be available soon.")
-          }
-        />
-      </View>
+          {editing ? (
+            <View style={styles.editForm}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>First Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                />
+              </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <SettingRow
-          icon="info"
-          label="App Version"
-          value="1.0.0"
-        />
-        <SettingRow
-          icon="description"
-          label="Terms of Service"
-          onPress={() =>
-            Alert.alert(
-              "Coming soon",
-              "Terms of service will be available soon."
-            )
-          }
-        />
-        <SettingRow
-          icon="lock"
-          label="Privacy Policy"
-          onPress={() =>
-            Alert.alert("Coming soon", "Privacy policy will be available soon.")
-          }
-        />
-      </View>
-    </ScrollView>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Last Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={lastName}
+                  onChangeText={setLastName}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Age</Text>
+                <TextInput
+                  style={styles.input}
+                  value={age}
+                  onChangeText={setAge}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Daily Step Goal</Text>
+                <TextInput
+                  style={styles.input}
+                  value={dailyStepGoal}
+                  onChangeText={setDailyStepGoal}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSave}>
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View>
+              <InfoRow
+                label="First Name"
+                value={userProfile.firstName}
+              />
+              <InfoRow
+                label="Last Name"
+                value={userProfile.lastName}
+              />
+              <InfoRow
+                label="Email"
+                value={userProfile.email}
+              />
+              <InfoRow
+                label="Age"
+                value={userProfile.age.toString()}
+              />
+              <InfoRow
+                label="Daily Step Goal"
+                value={`${userProfile.dailyStepGoal.toLocaleString()} steps`}
+              />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Settings</Text>
+          <SettingRow
+            icon="notifications"
+            label="Notifications"
+            value="On"
+            onPress={() =>
+              Alert.alert(
+                "Coming soon",
+                "Notification settings will be available soon."
+              )
+            }
+          />
+          <SettingRow
+            icon="language"
+            label="Language"
+            value="English"
+            onPress={() =>
+              Alert.alert(
+                "Coming soon",
+                "Language settings will be available soon."
+              )
+            }
+          />
+          <SettingRow
+            icon="color-lens"
+            label="Theme"
+            value="Light"
+            onPress={() =>
+              Alert.alert(
+                "Coming soon",
+                "Theme settings will be available soon."
+              )
+            }
+          />
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <SettingRow
+            icon="info"
+            label="App Version"
+            value="1.0.0"
+          />
+          <SettingRow
+            icon="description"
+            label="Terms of Service"
+            onPress={() =>
+              Alert.alert(
+                "Coming soon",
+                "Terms of service will be available soon."
+              )
+            }
+          />
+          <SettingRow
+            icon="lock"
+            label="Privacy Policy"
+            onPress={() =>
+              Alert.alert(
+                "Coming soon",
+                "Privacy policy will be available soon."
+              )
+            }
+          />
+        </View>
+      </ScrollView>
+    </>
   );
 }
 

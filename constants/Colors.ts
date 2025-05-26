@@ -1,19 +1,21 @@
-const tintColorLight = '#2f95dc';
-const tintColorDark = '#fff';
+import { COLORS } from "../styles/theme";
+
+const tintColorLight = COLORS.primary;
+const tintColorDark = COLORS.primary;
 
 export default {
   light: {
-    text: '#000',
-    background: '#fff',
+    text: COLORS.black,
+    background: COLORS.white,
     tint: tintColorLight,
-    tabIconDefault: '#ccc',
+    tabIconDefault: COLORS.darkMuted,
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#fff',
-    background: '#000',
+    text: COLORS.white,
+    background: COLORS.darkBackground,
     tint: tintColorDark,
-    tabIconDefault: '#ccc',
+    tabIconDefault: COLORS.darkMuted,
     tabIconSelected: tintColorDark,
   },
 };

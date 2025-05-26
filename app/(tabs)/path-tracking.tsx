@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Platform,
   Alert,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -142,10 +141,9 @@ export default function PathTrackingScreen() {
       </View>
     );
   }
-
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
 
       <View style={styles.mapContainer}>
         <TrackedMap
@@ -213,7 +211,7 @@ export default function PathTrackingScreen() {
           </TouchableOpacity>
         )}
       </View>
-      <View/>
+      <View />
     </View>
   );
 }

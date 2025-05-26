@@ -7,9 +7,18 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
+import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import VictoryNative from "victory-native";
+import {
+  VictoryChart,
+  VictoryTheme,
+  VictoryAxis,
+  VictoryBar,
+  VictoryLine,
+  VictoryScatter,
+  VictoryTooltip,
+} from "victory-native";
 import useStepStore, {
   ChartMode,
   StepSession,
@@ -72,9 +81,9 @@ export default function StatsScreen() {
   const openDatePicker = () => {
     router.push("/modal" as any); // suppress type error for Expo Router
   };
-
   return (
     <ScrollView style={styles.container}>
+      <StatusBar style="light" />
       <View style={styles.summaryContainer}>
         <View style={styles.summaryHeader}>
           <Text style={styles.summaryTitle}>Summary</Text>

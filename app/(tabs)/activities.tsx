@@ -7,6 +7,7 @@ import {
   FlatList,
 } from "react-native";
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
 import useStepStore, { StepSession } from "../../src/store/useStepStore";
 
@@ -18,6 +19,7 @@ export default function ActivitiesScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar style="light" />
       {sessions.length > 0 ? (
         <FlatList
           data={Object.entries(groupedSessions)}
