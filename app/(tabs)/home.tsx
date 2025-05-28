@@ -4,7 +4,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Image,
   RefreshControl,
 } from "react-native";
@@ -13,15 +12,15 @@ import { StatusBar } from "expo-status-bar";
 import { nativeStepCounterService } from "../../src/services/nativeStepCounterService";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, {
+import {
   useSharedValue,
-  useAnimatedStyle,
   withTiming,
   cancelAnimation,
   runOnJS,
 } from "react-native-reanimated";
 import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
 import { WeatherWidget } from "../../components/WeatherWidget";
+import { MOTIVATION_TIPS } from "../../src/constants/motivationTips";
 
 export default function HomeScreen() {
   const { userProfile, initializationStatus } = useStepStore();
@@ -97,6 +96,30 @@ export default function HomeScreen() {
     }
   };
 
+  // Daily motivation logic (random but deterministic per day, leak-proof)
+  const getDailyMotivation = () => {
+    // YYYY-MM-DD string for today
+    const today = new Date();
+    const dateString = today.toISOString().slice(0, 10);
+    // Simple hash function (djb2)
+    let hash = 5381;
+    for (let i = 0; i < dateString.length; i++) {
+      hash = (hash << 5) + hash + dateString.charCodeAt(i);
+      hash = hash & 0xffffffff; // Ensure 32-bit integer
+    }
+    const index = Math.abs(hash) % MOTIVATION_TIPS.length;
+    return MOTIVATION_TIPS[index];
+  };
+
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 18) return "Good afternoon";
+    if (hour >= 18 && hour < 22) return "Good evening";
+    return "Good night";
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -117,13 +140,14 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            tintColor={COLORS.primary}
+            colors={[COLORS.primary]} // Android szín
+            progressBackgroundColor={COLORS.darkCard} // Android háttérszín (opcionális)
           />
         }>
         {/* Welcome section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>
-            Welcome, {userProfile?.firstName || "there"}
+            {getGreeting()}, {userProfile?.firstName || "there"}
           </Text>
           <Text style={styles.welcomeSubtitle}>You step, we sync.</Text>
         </View>
@@ -152,7 +176,7 @@ export default function HomeScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}>
                   <Ionicons
-                    name="footsteps"
+                    name="walk"
                     size={28}
                     color={COLORS.white}
                   />
@@ -213,6 +237,18 @@ export default function HomeScreen() {
                 <Text style={styles.statLabel}>streak</Text>
               </View>
             </View>
+          </LinearGradient>
+        </View>
+
+        {/* Motivation card */}
+        <View style={styles.statsCard}>
+          <LinearGradient
+            colors={["rgba(19, 24, 36, 0.75)", "rgba(15, 20, 30, 0.75)"]}
+            style={styles.cardGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}>
+              <Text style={styles.motivationTitle}>TODAYS MOTIVATION:</Text>
+            <Text style={styles.motivationText}>{`"${getDailyMotivation()}"`}</Text>
           </LinearGradient>
         </View>
       </ScrollView>
@@ -284,7 +320,7 @@ const styles = StyleSheet.create({
   },
   statsLabel: {
     fontSize: FONTS.sizes.sm,
-    color: COLORS.darkMuted,
+    color: COLORS.white,
     fontWeight: "600",
   },
   stepsCount: {
@@ -346,5 +382,24 @@ const styles = StyleSheet.create({
     color: COLORS.warning,
     fontWeight: "600",
     marginLeft: 2,
+  },
+  //Motivatiion card title
+  motivationTitle: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: SPACING.sm,
+  },
+
+
+  // Motivation text
+  motivationText: {
+    color: COLORS.primary,
+    fontSize: FONTS.sizes.md,
+    fontWeight: "600",
+    textAlign: "center",
+    fontStyle: "italic",
+    paddingVertical: SPACING.sm,
   },
 });

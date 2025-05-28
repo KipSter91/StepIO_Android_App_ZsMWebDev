@@ -46,6 +46,8 @@ export default function TabLayout() {
           fontWeight: "600",
           color: COLORS.white,
         },
+        // Egyszerű fade animáció
+        animation: "fade",
       }}>
       <Tabs.Screen
         name="home"
@@ -58,20 +60,12 @@ export default function TabLayout() {
             />
           ),
           headerRight: () => (
-            <Link
-              href="/modal"
-              asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <Ionicons
-                    name="calendar-outline"
-                    size={24}
-                    color={COLORS.primary}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+            <Ionicons
+              name="home"
+              size={24}
+              color={COLORS.primary}
+              style={{ marginRight: 15 }}
+            />
           ),
         }}
       />
@@ -81,7 +75,7 @@ export default function TabLayout() {
           title: "Path Tracking",
           tabBarIcon: ({ color }) => (
             <TabBarIcon
-              name="footsteps"
+              name="map"
               color={color}
             />
           ),
