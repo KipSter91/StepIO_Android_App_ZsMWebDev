@@ -247,7 +247,7 @@ export default function HomeScreen() {
             style={styles.cardGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}>
-              <Text style={styles.motivationTitle}>TODAYS MOTIVATION:</Text>
+              <Text style={styles.motivationTitle}>TODAY'S MOTIVATION:</Text>
             <Text style={styles.motivationText}>{`"${getDailyMotivation()}"`}</Text>
           </LinearGradient>
         </View>

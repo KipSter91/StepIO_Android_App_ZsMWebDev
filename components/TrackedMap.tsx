@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     overflow: "hidden",
-    borderRadius: 8,
+    borderRadius: 16,
   },
   map: {
     width: "100%",

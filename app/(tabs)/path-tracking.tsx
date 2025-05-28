@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
   Alert,
+  Image,
+  Animated,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
@@ -13,6 +15,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import useStepStore from "../../src/store/useStepStore";
 import TrackedMap from "../../components/TrackedMap";
 import * as TaskManager from "expo-task-manager";
+import { COLORS, FONTS, SPACING } from "../../styles/theme";
 
 const LOCATION_TASK_NAME = "location-tracking";
 
@@ -41,6 +44,27 @@ export default function PathTrackingScreen() {
     updateActiveSession,
   } = useStepStore();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Fade effect for info card
+  const infoOpacity = useRef(new Animated.Value(1)).current;
+  const [showTracking, setShowTracking] = useState(isTracking);
+
+  useEffect(() => {
+    // Fade out
+    Animated.timing(infoOpacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowTracking(isTracking); // Switch content after fade out
+      // Fade in
+      Animated.timing(infoOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [isTracking]);
 
   // Request location permissions when component mounts
   useEffect(() => {
@@ -144,7 +168,15 @@ export default function PathTrackingScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-
+      {/* Background with logo */}
+      <View style={styles.backgroundContainer}>
+        <Image
+          source={require("../../assets/images/stepio-background.png")}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
+      </View>
+      {/* Map background */}
       <View style={styles.mapContainer}>
         <TrackedMap
           coordinates={activeSession?.coordinates || []}
@@ -153,39 +185,49 @@ export default function PathTrackingScreen() {
           followUser={isTracking}
         />
       </View>
-
-      {isTracking ? (
-        <View style={styles.trackingInfo}>
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Duration</Text>
-            <Text style={styles.statValue}>
-              {activeSession
-                ? formatDuration((Date.now() - activeSession.startTime) / 1000)
-                : "00:00:00"}
-            </Text>
-          </View>
-
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Steps</Text>
-            <Text style={styles.statValue}>{activeSession?.steps || 0}</Text>
-          </View>
-
-          <View style={styles.stat}>
-            <Text style={styles.statLabel}>Distance</Text>
-            <Text style={styles.statValue}>
-              {((activeSession?.coordinates?.length || 0) * 0.005).toFixed(2)}{" "}
-              km
-            </Text>
-          </View>
+      {/* Tracking info card */}
+      <View style={styles.statsCard}>
+        <View style={styles.cardGradient}>
+          <Animated.View style={{ opacity: infoOpacity, width: "100%" }}>
+            {showTracking ? (
+              <View style={styles.trackingInfoRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Duration</Text>
+                  <Text style={styles.statValue}>
+                    {activeSession
+                      ? formatDuration(
+                          (Date.now() - activeSession.startTime) / 1000
+                        )
+                      : "00:00:00"}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Steps</Text>
+                  <Text style={styles.statValue}>
+                    {activeSession?.steps || 0}
+                  </Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Distance</Text>
+                  <Text style={styles.statValue}>
+                    {(
+                      (activeSession?.coordinates?.length || 0) * 0.005
+                    ).toFixed(2)}{" "}
+                    km
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Text style={styles.emptyStateText}>
+                  Tap the start button to begin tracking your path
+                </Text>
+              </View>
+            )}
+          </Animated.View>
         </View>
-      ) : (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>
-            Tap the start button to begin tracking your path
-          </Text>
-        </View>
-      )}
-
+      </View>
+      {/* Start/Stop button */}
       <View style={styles.buttonContainer}>
         {!isTracking ? (
           <TouchableOpacity
@@ -193,8 +235,8 @@ export default function PathTrackingScreen() {
             onPress={handleStartTracking}>
             <MaterialIcons
               name="play-arrow"
-              size={32}
-              color="#fff"
+              size={28}
+              color={"#fff"}
             />
             <Text style={styles.buttonText}>Start Tracking</Text>
           </TouchableOpacity>
@@ -204,14 +246,13 @@ export default function PathTrackingScreen() {
             onPress={handleStopTracking}>
             <MaterialIcons
               name="stop"
-              size={32}
-              color="#fff"
+              size={28}
+              color={"#fff"}
             />
             <Text style={styles.buttonText}>Stop Tracking</Text>
           </TouchableOpacity>
         )}
       </View>
-      <View />
     </View>
   );
 }
@@ -232,87 +273,120 @@ function formatDuration(seconds: number): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.darkBackground,
+  },
+  // Background elements
+  backgroundContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backgroundImage: {
+    width: "100%",
+    height: "100%",
+    opacity: 0.3,
   },
   mapContainer: {
     flex: 1,
+    top: 20,
   },
-  trackingInfo: {
-    flexDirection: "row",
-    padding: 16,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    justifyContent: "space-between",
+  statsCard: {
+    borderRadius: 16, // nagyobb kerekítés
+    overflow: "hidden",
+    marginHorizontal: SPACING.lg,
+    marginTop: -32,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: "rgba(0, 255, 204, 0.3)",
+    backgroundColor: "rgba(19, 24, 36, 0.75)",
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  stat: {
+  cardGradient: {
+    padding: SPACING.lg,
+    backgroundColor: "rgba(29, 34, 53, 0.9)",
+    borderRadius: 16, // egyezzen a statsCard-dal
+    flexDirection: "column",
+    justifyContent: "center",
     alignItems: "center",
   },
+  trackingInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  statItem: {
+    alignItems: "center",
+    flex: 1,
+  },
   statLabel: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.darkMuted,
+    fontWeight: "600",
     marginBottom: 4,
   },
   statValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
+    fontWeight: "700",
   },
   buttonContainer: {
-    padding: 16,
-    backgroundColor: "#fff",
+    padding: SPACING.lg,
     alignItems: "center",
+    backgroundColor: "transparent",
   },
   startButton: {
     flexDirection: "row",
-    backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 50,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    width: "80%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    width: "60%",
+    // shadowColor: COLORS.primary,
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.15,
+    // shadowRadius: 6,
+    // elevation: 3,
   },
   stopButton: {
     flexDirection: "row",
-    backgroundColor: "#F44336",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    backgroundColor: COLORS.danger,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
     borderRadius: 50,
     alignItems: "center",
     justifyContent: "center",
-    width: "80%",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    width: "60%",
+    // shadowColor: COLORS.danger,
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.15,
+    // shadowRadius: 6,
     elevation: 3,
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-    marginLeft: 8,
+    color: COLORS.white,
+    fontSize: FONTS.sizes.md,
+    fontWeight: "700",
+    marginLeft: 10,
   },
   emptyStateContainer: {
-    padding: 24,
-    backgroundColor: "#f9f9f9",
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
+    padding: SPACING.lg,
     alignItems: "center",
   },
   emptyStateText: {
-    color: "#666",
-    fontSize: 16,
+    color: COLORS.darkMuted,
+    fontSize: FONTS.sizes.md,
     textAlign: "center",
   },
   errorText: {
-    color: "#F44336",
+    color: COLORS.warning,
     textAlign: "center",
     margin: 20,
   },

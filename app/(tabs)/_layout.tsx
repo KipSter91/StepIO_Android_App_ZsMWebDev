@@ -61,7 +61,7 @@ export default function TabLayout() {
           ),
           headerRight: () => (
             <Ionicons
-              name="home"
+              name="home-outline"
               size={24}
               color={COLORS.primary}
               style={{ marginRight: 15 }}
@@ -77,6 +77,14 @@ export default function TabLayout() {
             <TabBarIcon
               name="map"
               color={color}
+            />
+          ),
+          headerRight: () => (
+            <Ionicons
+              name="map-outline"
+              size={24}
+              color={COLORS.primary}
+              style={{ marginRight: 15 }}
             />
           ),
         }}
