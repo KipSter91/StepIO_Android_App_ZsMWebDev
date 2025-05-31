@@ -168,11 +168,11 @@ class NativeStepCounterService {
     return hourlySteps;
   }
 
-  public async getHourlyStepsForToday(): Promise<HourlySteps> {
+  // Get hourly steps for any specific date
+  public async getHourlyStepsForDate(date: Date): Promise<HourlySteps> {
     try {
-      const today = new Date();
-      const date = today.toISOString().split("T")[0];
-      const timestamps = await this.getStepTimestampsForDate(date);
+      const dateString = date.toISOString().split("T")[0];
+      const timestamps = await this.getStepTimestampsForDate(dateString);
       return this.convertTimestampsToHourly(timestamps);
     } catch {
       const emptyData: HourlySteps = {};
@@ -180,13 +180,18 @@ class NativeStepCounterService {
       return emptyData;
     }
   }
-
   // Get all step timestamps for a given date (YYYY-MM-DD), with cache for past days
   public async getStepTimestampsForDate(
     date: string
   ): Promise<StepTimestamp[]> {
     try {
       const today = new Date().toISOString().split("T")[0];
+
+      // Don't return data for future dates
+      if (date > today) {
+        return [];
+      }
+
       if (
         date !== today &&
         timestampCache[date] &&
@@ -288,9 +293,44 @@ class NativeStepCounterService {
       delete timestampCache[key];
     });
   }
+
+  // Debug function to log today's JSON data
+  async logTodayJsonData(): Promise<void> {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      console.log(`🔍 Fetching JSON data for today: ${today}`);
+
+      const jsonData = await NativeStepCounter.getStepTimestampsForDate(today);
+      console.log(
+        `📊 Raw JSON data from native:`,
+        JSON.stringify(jsonData, null, 2)
+      );
+
+      // Also log the parsed timestamps
+      const timestamps = await this.getStepTimestampsForDate(today);
+      console.log(`📈 Parsed timestamps for ${today}:`, timestamps);
+
+      // Log hourly breakdown
+      const hourlySteps = await this.getHourlyStepsForDate(new Date());
+      console.log(`⏰ Hourly steps for ${today}:`, hourlySteps);
+
+      // Log today's totals
+      const todaySteps = await this.getTodaySteps();
+      const todayCalories = await this.getTodayCalories();
+      console.log(
+        `🏃 Today's totals - Steps: ${todaySteps}, Calories: ${todayCalories}`
+      );
+    } catch (error) {
+      console.error("❌ Error logging today's JSON data:", error);
+    }
+  }
 }
 
 export const nativeStepCounterService = new NativeStepCounterService();
+
+// Közvetlen export a debug funkcióhoz:
+export const logTodayJsonData = () =>
+  nativeStepCounterService.logTodayJsonData();
 
 // Automatically manage subscriptions on app state changes
 AppState.addEventListener("change", (nextAppState) => {

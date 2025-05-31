@@ -99,6 +99,14 @@ export default function TabLayout() {
               color={color}
             />
           ),
+          headerRight: () => (
+            <Ionicons
+              name="stats-chart-outline"
+              size={24}
+              color={COLORS.primary}
+              style={{ marginRight: 15 }}
+            />
+          ),
         }}
       />
       <Tabs.Screen

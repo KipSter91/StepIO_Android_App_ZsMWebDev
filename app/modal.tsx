@@ -5,11 +5,15 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 import useStepStore from "../src/store/useStepStore";
+import { COLORS, FONTS, SPACING, GRADIENTS } from "../styles/theme";
 
 const MONTHS = [
   "January",
@@ -26,31 +30,48 @@ const MONTHS = [
   "December",
 ];
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function CalendarScreen() {
   const { selectedRange, setDateRange } = useStepStore();
   const today = new Date();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(
-    today
+
+  // Create today's date in local timezone (avoiding UTC conversion issues)
+  const todayLocal = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
   );
-  const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(today);
 
-  // Get days in current month view
-  const getDaysInMonth = (year: number, month: number): (Date | null)[] => {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
-    const days: (Date | null)[] = [];
+  // Initialize currentDate to first day of current month to avoid day overflow issues
+  const [currentDate, setCurrentDate] = useState(
+    new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+  const [selectedStartDate, setSelectedStartDate] = useState<Date | null>(
+    todayLocal
+  );
+  const [selectedEndDate, setSelectedEndDate] = useState<Date | null>(
+    todayLocal
+  );
+  const [pendingDay, setPendingDay] = useState<Date | null>(null);
 
-    // Add empty slots for days before the first of the month
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(null);
-    }
+  // Get days in current month view including previous and next month days
+  const getDaysInMonth = (year: number, month: number): Date[] => {
+    const firstDayOfMonth = new Date(year, month, 1);
+    const startDate = new Date(firstDayOfMonth);
 
-    // Add days of the month
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i));
+    // Adjust to Monday of the week containing the first day
+    const dayOfWeek = firstDayOfMonth.getDay();
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Convert Sunday=0 to Monday=0 system
+    startDate.setDate(startDate.getDate() - mondayOffset);
+
+    const days: Date[] = [];
+    const currentDate = new Date(startDate);
+
+    // Generate 6 weeks (42 days) to ensure we show complete weeks
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     return days;
@@ -63,38 +84,109 @@ export default function CalendarScreen() {
 
   // Next/Previous month navigation
   const goToNextMonth = () => {
-    const nextMonth = new Date(currentDate);
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    console.log(
+      "goToNextMonth - current:",
+      currentDate.getMonth(),
+      currentDate.getFullYear()
+    );
+    // Create new date at the first day of next month to avoid day overflow issues
+    const nextMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      1
+    );
+    console.log(
+      "goToNextMonth - next:",
+      nextMonth.getMonth(),
+      nextMonth.getFullYear()
+    );
     setCurrentDate(nextMonth);
   };
 
   const goToPrevMonth = () => {
-    const prevMonth = new Date(currentDate);
-    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    console.log(
+      "goToPrevMonth - current:",
+      currentDate.getMonth(),
+      currentDate.getFullYear()
+    );
+    // Create new date at the first day of previous month to avoid day overflow issues
+    const prevMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() - 1,
+      1
+    );
+    console.log(
+      "goToPrevMonth - prev:",
+      prevMonth.getMonth(),
+      prevMonth.getFullYear()
+    );
     setCurrentDate(prevMonth);
+  };
+
+  // Check if a day is in the current month
+  const isCurrentMonth = (day: Date) => {
+    return (
+      day.getMonth() === currentDate.getMonth() &&
+      day.getFullYear() === currentDate.getFullYear()
+    );
   };
 
   // Handle day selection
   const handleDayPress = (day: Date) => {
     if (!day) return;
 
+    // Create a local date to avoid timezone issues
+    const localDay = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+
+    // Prevent selecting future dates
+    const today = new Date();
+    const todayLocal = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+
+    if (localDay > todayLocal) {
+      console.log("Cannot select future date:", localDay.toDateString());
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // If no start date is selected or if end date is already selected, start fresh
+    // Ha nem az aktuális hónap napja, de van kiválasztott start date, próbáljuk meg range-ként kezelni
+    if (!isCurrentMonth(day)) {
+      if (selectedStartDate && !selectedEndDate) {
+        // Van start date, ez lehet end date - nem navigálunk, hanem beállítjuk a range-et
+        if (selectedStartDate > localDay) {
+          setSelectedEndDate(selectedStartDate);
+          setSelectedStartDate(localDay);
+        } else {
+          setSelectedEndDate(localDay);
+        }
+        return;
+      } else {
+        // Nincs start date vagy már van end date - navigálunk és új kiválasztást kezdünk
+        setCurrentDate(new Date(day.getFullYear(), day.getMonth(), 1));
+        setPendingDay(localDay);
+        return;
+      }
+    }
+
+    // Ha nincs start date vagy már van end date, új kijelölés kezdése
     if (!selectedStartDate || selectedEndDate) {
-      setSelectedStartDate(day);
+      setSelectedStartDate(localDay);
       setSelectedEndDate(null);
       return;
     }
 
-    // If start date is after the selected day, swap them
-    if (selectedStartDate > day) {
+    // Ha a start date későbbi, mint a most kiválasztott nap, swap
+    if (selectedStartDate > localDay) {
       setSelectedEndDate(selectedStartDate);
-      setSelectedStartDate(day);
+      setSelectedStartDate(localDay);
       return;
     }
 
-    setSelectedEndDate(day);
+    setSelectedEndDate(localDay);
   };
 
   // Check if a day is selected (start date, end date, or in between)
@@ -103,8 +195,12 @@ export default function CalendarScreen() {
 
     const isStartDate = isSameDay(day, selectedStartDate);
     const isEndDate = selectedEndDate && isSameDay(day, selectedEndDate);
+
+    // Cross-month range support - compare actual dates regardless of which month view we're in
     const isInRange =
-      selectedEndDate && day > selectedStartDate && day < selectedEndDate;
+      selectedEndDate &&
+      day.getTime() > selectedStartDate.getTime() &&
+      day.getTime() < selectedEndDate.getTime();
 
     return isStartDate || isEndDate || isInRange;
   };
@@ -141,9 +237,33 @@ export default function CalendarScreen() {
     );
   };
 
+  // Helper to format date as YYYY.MM.DD
+  const formatDate = (date: Date) => {
+    if (!(date instanceof Date) || isNaN(date.getTime())) return "";
+    const y = date.getFullYear();
+    const m = (date.getMonth() + 1).toString().padStart(2, "0");
+    const d = date.getDate().toString().padStart(2, "0");
+    return `${y}.${m}.${d}`;
+  };
+
   // Apply the selected range and navigate back
   const applyDateRange = () => {
     if (selectedStartDate) {
+      console.log("📅 Applying date range:");
+      console.log("📅 Selected start date:", selectedStartDate);
+      console.log(
+        "📅 Selected start date ISO:",
+        selectedStartDate.toISOString()
+      );
+      console.log(
+        "📅 Selected end date:",
+        selectedEndDate || selectedStartDate
+      );
+      console.log(
+        "📅 Selected end date ISO:",
+        (selectedEndDate || selectedStartDate).toISOString()
+      );
+
       setDateRange(selectedStartDate, selectedEndDate || selectedStartDate);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -151,105 +271,178 @@ export default function CalendarScreen() {
     }
   };
 
+  // Adjunk hozzá egy useEffect-et, ami a currentDate változásakor feldolgozza a pendingDay-t
+  React.useEffect(() => {
+    if (pendingDay && isCurrentMonth(pendingDay)) {
+      // Create local date to avoid timezone issues
+      const localPendingDay = new Date(
+        pendingDay.getFullYear(),
+        pendingDay.getMonth(),
+        pendingDay.getDate()
+      );
+
+      // Ha nincs start date vagy már van end date, új kiválasztást kezdünk
+      if (!selectedStartDate || selectedEndDate) {
+        setSelectedStartDate(localPendingDay);
+        setSelectedEndDate(null);
+      } else {
+        // Van start date, ez lesz az end date
+        if (selectedStartDate > localPendingDay) {
+          setSelectedEndDate(selectedStartDate);
+          setSelectedStartDate(localPendingDay);
+        } else {
+          setSelectedEndDate(localPendingDay);
+        }
+      }
+      setPendingDay(null);
+    }
+  }, [currentDate, pendingDay, selectedStartDate, selectedEndDate]);
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Select Date Range</Text>
-
-        <View style={styles.monthSelector}>
-          <TouchableOpacity
-            onPress={goToPrevMonth}
-            style={styles.navButton}>
-            <MaterialIcons
-              name="chevron-left"
-              size={24}
-              color="#333"
-            />
-          </TouchableOpacity>
-
-          <Text style={styles.monthYearText}>
-            {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
-          </Text>
-
-          <TouchableOpacity
-            onPress={goToNextMonth}
-            style={styles.navButton}>
-            <MaterialIcons
-              name="chevron-right"
-              size={24}
-              color="#333"
-            />
-          </TouchableOpacity>
-        </View>
+      <StatusBar style="light" />
+      {/* Background with logo */}
+      <View style={styles.backgroundContainer}>
+        <Image
+          source={require("../assets/images/stepio-background.png")}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
       </View>
+      <View style={styles.contentContainer}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Select Date Range</Text>
 
-      <View style={styles.calendarContainer}>
-        {/* Day labels */}
-        <View style={styles.weekdaysRow}>
-          {DAYS.map((day) => (
-            <Text
-              key={day}
-              style={styles.dayLabel}>
-              {day}
-            </Text>
-          ))}
-        </View>
-
-        {/* Calendar days */}
-        <ScrollView contentContainerStyle={styles.daysGrid}>
-          {days.map((day, index) => (
+          <LinearGradient
+            colors={GRADIENTS.storyCard}
+            style={styles.monthSelector}>
             <TouchableOpacity
-              key={`day-${index}`}
-              style={[
-                styles.dayCell,
-                !day && styles.emptyCell,
-                isDaySelected(day) && styles.selectedDay,
-                isDayEdge(day) && styles.edgeDay,
-              ]}
-              onPress={() => day && handleDayPress(day)}
-              disabled={!day}>
-              {day instanceof Date && !isNaN(day.getTime()) && (
-                <Text
-                  style={[
-                    styles.dayText,
-                    isDaySelected(day) && styles.selectedDayText,
-                  ]}>
-                  {day.getDate()}
-                </Text>
-              )}
+              onPress={goToPrevMonth}
+              style={styles.navButton}>
+              <MaterialIcons
+                name="chevron-left"
+                size={24}
+                color={COLORS.primary}
+              />
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
 
-      <View style={styles.selectedRangeDisplay}>
-        <Text style={styles.rangeText}>
-          {selectedStartDate instanceof Date &&
-          !isNaN(selectedStartDate.getTime())
-            ? selectedEndDate instanceof Date &&
-              !isNaN(selectedEndDate?.getTime())
-              ? `${selectedStartDate.toLocaleDateString()} - ${selectedEndDate.toLocaleDateString()}`
-              : `${selectedStartDate.toLocaleDateString()}`
-            : "Select a date range"}
-        </Text>
-      </View>
+            <Text style={styles.monthYearText}>
+              {MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}
+            </Text>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => router.back()}>
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              onPress={goToNextMonth}
+              style={styles.navButton}>
+              <MaterialIcons
+                name="chevron-right"
+                size={24}
+                color={COLORS.primary}
+              />
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
 
-        <TouchableOpacity
-          style={[
-            styles.applyButton,
-            !selectedStartDate && styles.disabledButton,
-          ]}
-          onPress={applyDateRange}
-          disabled={!selectedStartDate}>
-          <Text style={styles.applyButtonText}>Apply</Text>
-        </TouchableOpacity>
+        <LinearGradient
+          colors={GRADIENTS.storyCard}
+          style={styles.calendarContainer}>
+          {/* Day labels */}
+          <View style={styles.weekdaysRow}>
+            {DAYS.map((day) => (
+              <Text
+                key={day}
+                style={styles.dayLabel}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          {/* Calendar days */}
+          <ScrollView contentContainerStyle={styles.daysGrid}>
+            {days.map((day, index) => {
+              const today = new Date();
+              today.setHours(23, 59, 59, 999);
+              const isFuture = day && day > today;
+
+              // Új: tartományban van-e a nap (de nem start/end)
+              let isInRange = false;
+              if (
+                day &&
+                selectedStartDate &&
+                selectedEndDate &&
+                day.getTime() > selectedStartDate.getTime() &&
+                day.getTime() < selectedEndDate.getTime()
+              ) {
+                isInRange = true;
+              }
+
+              return (
+                <TouchableOpacity
+                  key={`day-${index}`}
+                  style={[
+                    styles.dayCell,
+                    !day && styles.emptyCell,
+                    isDaySelected(day) && styles.selectedDay,
+                    isDayEdge(day) && styles.edgeDay,
+                    isInRange && styles.inRangeDay, // Új: tartomány napjai
+                    day && !isCurrentMonth(day) && styles.adjacentMonthDay,
+                    isFuture && styles.futureDay,
+                  ]}
+                  onPress={() => day && handleDayPress(day)}
+                  disabled={!day || !!isFuture}>
+                  {day instanceof Date && !isNaN(day.getTime()) && (
+                    <Text
+                      style={[
+                        styles.dayText,
+                        isDaySelected(day) && styles.selectedDayText,
+                        !isCurrentMonth(day) && styles.adjacentMonthDayText,
+                        isFuture && styles.futureDayText,
+                      ]}>
+                      {day.getDate()}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </LinearGradient>
+
+        <LinearGradient
+          colors={GRADIENTS.storyCard}
+          style={styles.selectedRangeDisplay}>
+          <Text style={styles.rangeText}>
+            {selectedStartDate instanceof Date &&
+            !isNaN(selectedStartDate.getTime())
+              ? selectedEndDate instanceof Date &&
+                !isNaN(selectedEndDate?.getTime())
+                ? `${formatDate(selectedStartDate)} - ${formatDate(
+                    selectedEndDate
+                  )}`
+                : `${formatDate(selectedStartDate)}`
+              : "Select a date range"}
+          </Text>
+        </LinearGradient>
+
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => router.back()}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+
+          <LinearGradient
+            colors={[COLORS.primary, COLORS.secondary]}
+            style={[
+              styles.applyButton,
+              !selectedStartDate && styles.disabledButton,
+            ]}>
+            <TouchableOpacity
+              onPress={applyDateRange}
+              disabled={!selectedStartDate}
+              style={styles.applyButtonInner}>
+              <Text style={styles.applyButtonText}>Apply</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
       </View>
     </View>
   );
@@ -258,48 +451,72 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    padding: 16,
+    backgroundColor: COLORS.darkBackground,
+  },
+  // Background elements
+  backgroundContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backgroundImage: {
+    width: "100%",
+    height: "100%",
+    opacity: 0.6,
+  },
+  contentContainer: {
+    flex: 1,
+    padding: SPACING.lg,
+    justifyContent: "center", // Center content vertically
   },
   header: {
-    marginBottom: 24,
+    marginBottom: SPACING.lg,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
+    ...FONTS.cyber,
+    fontSize: FONTS.sizes.xxl,
+    color: COLORS.white,
+    marginBottom: SPACING.lg,
+    textAlign: "center",
   },
   monthSelector: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    padding: SPACING.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
   },
   navButton: {
-    padding: 8,
+    padding: SPACING.sm,
   },
   monthYearText: {
-    fontSize: 18,
-    fontWeight: "500",
-    color: "#333",
+    ...FONTS.bold,
+    fontSize: FONTS.sizes.lg,
+    color: COLORS.white,
   },
   calendarContainer: {
-    borderRadius: 8,
-    backgroundColor: "#f9f9f9",
-    padding: 12,
-    marginBottom: 24,
+    borderRadius: 16,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+    maxHeight: 360, // Increased from 300 to 360 to fit 6 weeks without scrolling
   },
   weekdaysRow: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: 8,
+    marginBottom: SPACING.sm,
   },
   dayLabel: {
     width: 40,
     textAlign: "center",
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#666",
+    ...FONTS.medium,
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.darkMuted,
   },
   daysGrid: {
     flexDirection: "row",
@@ -310,70 +527,91 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: 5,
+    marginVertical: 2,
   },
   emptyCell: {
     backgroundColor: "transparent",
   },
   dayText: {
-    fontSize: 16,
-    color: "#333",
+    ...FONTS.medium,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
+  },
+  adjacentMonthDay: {
+    opacity: 0.3,
+  },
+  adjacentMonthDayText: {
+    color: COLORS.darkMuted,
+  },
+  futureDay: {
+    opacity: 0.2,
+  },
+  futureDayText: {
+    color: COLORS.darkMuted,
   },
   selectedDay: {
-    backgroundColor: "#e6f3fd",
+    backgroundColor: `${COLORS.primary}20`,
   },
   edgeDay: {
-    backgroundColor: "#3498db",
+    backgroundColor: COLORS.primary,
     borderRadius: 20,
   },
   selectedDayText: {
-    color: "#3498db",
-    fontWeight: "500",
+    color: COLORS.darkBackground,
+    fontWeight: "bold",
   },
   selectedRangeDisplay: {
-    backgroundColor: "#f0f0f0",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 24,
+    padding: SPACING.lg,
+    borderRadius: 16,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
   },
   rangeText: {
-    fontSize: 16,
-    color: "#333",
+    ...FONTS.medium,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
     textAlign: "center",
-    fontWeight: "500",
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
+    gap: SPACING.md,
   },
   cancelButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    width: "45%",
+    borderColor: COLORS.darkBorder,
+    borderRadius: 12,
+    flex: 1,
     alignItems: "center",
   },
   cancelButtonText: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "500",
+    ...FONTS.medium,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.darkMuted,
   },
   applyButton: {
-    backgroundColor: "#3498db",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    width: "45%",
+    borderRadius: 12,
+    flex: 1,
+  },
+  applyButtonInner: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
     alignItems: "center",
   },
   applyButtonText: {
-    fontSize: 16,
-    color: "#fff",
-    fontWeight: "500",
+    ...FONTS.bold,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
   },
   disabledButton: {
-    backgroundColor: "#ccc",
+    opacity: 0.5,
+  },
+  // Új stílus: inRangeDay (kijelölt tartomány napjai)
+  inRangeDay: {
+    backgroundColor: `${COLORS.primary}20`, // halvány primary szín
+    borderRadius: 16,
   },
 });

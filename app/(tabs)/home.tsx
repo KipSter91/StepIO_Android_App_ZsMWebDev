@@ -158,7 +158,7 @@ export default function HomeScreen() {
         {/* Today's stats card */}
         <View style={styles.statsCard}>
           <LinearGradient
-            colors={["rgba(19, 24, 36, 0.75)", "rgba(15, 20, 30, 0.75)"]}
+            colors={GRADIENTS.storyCard}
             style={styles.cardGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}>
@@ -243,12 +243,13 @@ export default function HomeScreen() {
         {/* Motivation card */}
         <View style={styles.statsCard}>
           <LinearGradient
-            colors={["rgba(19, 24, 36, 0.75)", "rgba(15, 20, 30, 0.75)"]}
+            colors={GRADIENTS.storyCard}
             style={styles.cardGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}>
-              <Text style={styles.motivationTitle}>TODAY'S MOTIVATION:</Text>
-            <Text style={styles.motivationText}>{`"${getDailyMotivation()}"`}</Text>
+            <Text style={styles.motivationTitle}>TODAY'S MOTIVATION:</Text>
+            <Text
+              style={styles.motivationText}>{`"${getDailyMotivation()}"`}</Text>
           </LinearGradient>
         </View>
       </ScrollView>
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: "100%",
     height: "100%",
-    opacity: 0.3,
+    opacity: 0.6,
   },
 
   // Scroll view content
@@ -306,7 +307,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: SPACING.xl,
     borderWidth: 1,
-    borderColor: "rgba(0, 255, 204, 0.3)",
+    borderColor: COLORS.darkBorder,
   },
   cardGradient: {
     padding: SPACING.lg,
@@ -391,7 +392,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: SPACING.sm,
   },
-
 
   // Motivation text
   motivationText: {

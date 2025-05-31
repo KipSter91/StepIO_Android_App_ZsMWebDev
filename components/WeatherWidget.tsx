@@ -213,7 +213,7 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={["rgba(19, 24, 36, 0.75)", "rgba(15, 20, 30, 0.75)"]}
+        colors={GRADIENTS.storyCard}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}>
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: SPACING.md,
     borderWidth: 1,
-    borderColor: "rgba(0, 221, 255, 0.3)",
+    borderColor: COLORS.darkBorder,
   },
   gradient: {
     padding: SPACING.md,

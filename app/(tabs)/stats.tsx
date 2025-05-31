@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   View,
@@ -6,663 +6,889 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  ImageBackground,
+  RefreshControl,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import {
-  VictoryChart,
-  VictoryTheme,
-  VictoryAxis,
-  VictoryBar,
-  VictoryLine,
-  VictoryScatter,
-  VictoryTooltip,
-} from "victory-native";
-import useStepStore, {
-  ChartMode,
-  StepSession,
-} from "../../src/store/useStepStore";
+  nativeStepCounterService,
+  HourlySteps,
+} from "../../src/services/nativeStepCounterService";
+import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
+import useStepStore from "../../src/store/useStepStore";
 
 const { width } = Dimensions.get("window");
-const chartWidth = width - 32;
 
-export default function StatsScreen() {
-  const { chartMode, setChartMode, selectedRange, sessions } = useStepStore();
+export type DateRangeType = "day" | "week" | "month" | "year";
 
-  // Calculate actual stats from sessions data
-  const stats = useMemo(() => {
-    // Filter sessions within selected range
-    const filteredSessions = sessions.filter((session) => {
-      const sessionDate = new Date(session.startTime);
-      return (
-        sessionDate >= selectedRange.from && sessionDate <= selectedRange.to
-      );
-    });
-
-    // Calculate totals
-    const totalSteps = filteredSessions.reduce(
-      (sum, session) => sum + session.steps,
-      0
-    );
-    const totalDistance = filteredSessions.reduce(
-      (sum, session) => sum + (session.distance || session.steps * 0.0008),
-      0
-    );
-    const totalCalories = filteredSessions.reduce(
-      (sum, session) => sum + (session.calories || session.steps * 0.04),
-      0
-    );
-    const activeDays = new Set(
-      filteredSessions.map((session) =>
-        new Date(session.startTime).toDateString()
-      )
-    ).size;
-
-    return {
-      totalSteps,
-      totalDistance,
-      totalCalories,
-      activeDays,
-    };
-  }, [sessions, selectedRange]);
-
-  // Generate chart data based on the mode
-  const chartData = useMemo(() => {
-    return generateChartData(sessions, selectedRange, chartMode);
-  }, [sessions, selectedRange, chartMode]);
-
-  // Handle mode switching
-  const handleModeChange = (mode: ChartMode) => {
-    setChartMode(mode);
-  };
-
-  // Open date picker
-  const openDatePicker = () => {
-    router.push("/modal" as any); // suppress type error for Expo Router
-  };
-  return (
-    <ScrollView style={styles.container}>
-      <StatusBar style="light" />
-      <View style={styles.summaryContainer}>
-        <View style={styles.summaryHeader}>
-          <Text style={styles.summaryTitle}>Summary</Text>
-          <TouchableOpacity
-            style={styles.datePickerButton}
-            onPress={openDatePicker}>
-            <Text style={styles.dateText}>
-              {formatDateRange(selectedRange.from, selectedRange.to)}
-            </Text>
-            <MaterialIcons
-              name="calendar-today"
-              size={16}
-              color="#3498db"
-            />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.statsGrid}>
-          <StatCard
-            title="Total Steps"
-            value={stats.totalSteps.toLocaleString()}
-            icon="directions-walk"
-          />
-          <StatCard
-            title="Distance"
-            value={`${stats.totalDistance.toFixed(1)} km`}
-            icon="straighten"
-          />
-          <StatCard
-            title="Calories"
-            value={`${stats.totalCalories.toFixed(0)} kcal`}
-            icon="local-fire-department"
-          />
-          <StatCard
-            title="Active Days"
-            value={stats.activeDays.toString()}
-            icon="event-available"
-          />
-        </View>
-      </View>
-
-      <View style={styles.chartContainer}>
-        <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>Activity Chart</Text>
-
-          <View style={styles.modeSwitcher}>
-            <ModeButton
-              label="D"
-              mode="day"
-              current={chartMode}
-              onPress={() => handleModeChange("day")}
-            />
-            <ModeButton
-              label="W"
-              mode="week"
-              current={chartMode}
-              onPress={() => handleModeChange("week")}
-            />
-            <ModeButton
-              label="M"
-              mode="month"
-              current={chartMode}
-              onPress={() => handleModeChange("month")}
-            />
-            <ModeButton
-              label="Y"
-              mode="year"
-              current={chartMode}
-              onPress={() => handleModeChange("year")}
-            />
-          </View>
-        </View>
-
-        {VictoryNative && chartData.length > 0 ? (
-          <View style={styles.chartWrapper}>
-            <VictoryNative.VictoryChart
-              width={chartWidth}
-              height={220}
-              padding={{ top: 20, bottom: 40, left: 50, right: 30 }}
-              theme={VictoryNative.VictoryTheme.material}
-              domainPadding={{ x: 20 }}>
-              <VictoryNative.VictoryAxis
-                tickFormat={(tick: string) => getTickFormat(tick, chartMode)}
-                style={{
-                  tickLabels: {
-                    fontSize: 10,
-                    padding: 5,
-                    angle: chartMode === "week" ? -45 : 0,
-                  },
-                }}
-              />
-              <VictoryNative.VictoryAxis
-                dependentAxis
-                tickFormat={(tick: number) => `${Math.round(tick / 1000)}k`}
-                style={{
-                  tickLabels: { fontSize: 10, padding: 5 },
-                }}
-              />
-              <VictoryNative.VictoryBar
-                data={chartData}
-                x="label"
-                y="steps"
-                style={{
-                  data: {
-                    fill: ({ datum }: { datum: any }) =>
-                      datum.isToday ? "#2980b9" : "#3498db",
-                    width: chartMode === "day" ? 15 : undefined,
-                  },
-                }}
-                cornerRadius={4}
-                barRatio={0.8}
-                labels={({ datum }: { datum: any }) =>
-                  `${datum.steps.toLocaleString()} steps`
-                }
-                labelComponent={
-                  <VictoryNative.VictoryTooltip
-                    flyoutStyle={{ fill: "white" }}
-                  />
-                }
-              />
-              {chartMode !== "day" && (
-                <>
-                  <VictoryNative.VictoryLine
-                    data={chartData}
-                    x="label"
-                    y="average"
-                    style={{
-                      data: {
-                        stroke: "#e74c3c",
-                        strokeWidth: 2,
-                        strokeDasharray: "5,5",
-                      },
-                    }}
-                  />
-                  <VictoryNative.VictoryScatter
-                    data={chartData}
-                    x="label"
-                    y="average"
-                    size={4}
-                    style={{
-                      data: { fill: "#e74c3c" },
-                    }}
-                  />
-                </>
-              )}
-            </VictoryNative.VictoryChart>
-            <View style={styles.chartLegend}>
-              <View style={styles.legendItem}>
-                <View
-                  style={[styles.legendColor, { backgroundColor: "#3498db" }]}
-                />
-                <Text style={styles.legendText}>Steps</Text>
-              </View>
-              {chartMode !== "day" && (
-                <View style={styles.legendItem}>
-                  <View
-                    style={[styles.legendColor, { backgroundColor: "#e74c3c" }]}
-                  />
-                  <Text style={styles.legendText}>Average</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.chartPlaceholder}>
-            <Text style={styles.placeholderText}>
-              No data available for the selected time period
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.recentActivityContainer}>
-        <Text style={styles.recentActivityTitle}>Recent Activities</Text>
-
-        {sessions.length > 0 ? (
-          sessions.map((session) => (
-            <TouchableOpacity
-              key={session.id}
-              style={styles.activityCard}
-              onPress={() => router.push(`/stats/${session.id}`)}>
-              <View style={styles.activityIconContainer}>
-                <MaterialIcons
-                  name="directions-run"
-                  size={24}
-                  color="#3498db"
-                />
-              </View>
-              <View style={styles.activityDetails}>
-                <Text style={styles.activityTitle}>
-                  {new Date(session.startTime).toLocaleDateString()}
-                </Text>
-                <Text style={styles.activitySubtitle}>
-                  {formatDuration(
-                    (session.endTime || Date.now()) - session.startTime
-                  )}
-                  {" • "}
-                  {session.steps} steps
-                  {" • "}
-                  {(session.steps * 0.0008).toFixed(2)} km
-                </Text>
-              </View>
-              <MaterialIcons
-                name="chevron-right"
-                size={24}
-                color="#ccc"
-              />
-            </TouchableOpacity>
-          ))
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No recent activities</Text>
-            <TouchableOpacity
-              style={styles.startTrackingButton}
-              onPress={() => router.push("/path-tracking")}>
-              <Text style={styles.startTrackingButtonText}>Start Tracking</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </ScrollView>
-  );
+export interface DateRange {
+  from: Date;
+  to: Date;
+  type: DateRangeType;
 }
 
-function StatCard({
+interface StatsData {
+  totalSteps: number;
+  totalCalories: number;
+  totalDistance: number;
+  hourlySteps: HourlySteps;
+  activeDays: number; // This will represent active hours for day view, active days for other views
+}
+
+// Simple chart component to replace victory-native
+const SimpleChart = ({
+  data,
+  labels,
+  dateRangeType,
+  dateRange,
+}: {
+  data: number[];
+  labels?: string[];
+  dateRangeType: DateRangeType;
+  dateRange?: DateRange;
+}) => {
+  const maxValue = Math.max(...data, 1);
+  const [chartHeight, setChartHeight] = React.useState(140); // default to style height
+
+  // Generate Y-axis labels (nice numbers, always 5 labels, maxValue at top or felette)
+  function getNiceChartMax(value: number) {
+    if (value <= 0) return 1;
+    const exponent = Math.floor(Math.log10(value));
+    const fraction = value / Math.pow(10, exponent);
+    let niceFraction;
+    if (fraction <= 1) niceFraction = 1;
+    else if (fraction <= 2) niceFraction = 2;
+    else if (fraction <= 2.5) niceFraction = 2.5;
+    else if (fraction <= 5) niceFraction = 5;
+    else niceFraction = 10;
+    return niceFraction * Math.pow(10, exponent);
+  }
+
+  const chartMax = getNiceChartMax(maxValue);
+  // --- Y Axis labels and grid lines logic ---
+  // We want 4 grid lines (not 0), but the bars should start at the bottom (0),
+  // so the chartMax (top) -> 0 (bottom) mapping must be precise.
+  // The grid lines should be at 1, 0.75, 0.5, 0.25 of chartMax, but the bar height calculation must always use the full chartHeight for chartMax.
+
+  // yAxisLabels: only 4 visible values (no 0), but keep 5 slots for correct grid/bar mapping
+  const yAxisLabels = [
+    chartMax,
+    chartMax * 0.75,
+    chartMax * 0.5,
+    chartMax * 0.25,
+  ];
+  const yAxisLabelSlots = 5; // for grid line math
+
+  const formatYAxisLabel = (value: number): string => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k`;
+    }
+    return value.toString();
+  };
+  const getLabel = (index: number): string => {
+    if (labels && labels[index]) return labels[index];
+
+    switch (dateRangeType) {
+      case "day":
+        // Show every 4th hour to reduce clutter
+        if (index % 4 === 0) {
+          return index < 10 ? `0${index}` : index.toString();
+        }
+        return "";
+      case "week":
+        return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index] || "";
+      case "month": {
+        // For month view, only show labels for certain days and not in the future
+        const dayNumber = index + 1;
+        if (dateRange) {
+          const dayDate = new Date(
+            dateRange.from.getFullYear(),
+            dateRange.from.getMonth(),
+            dayNumber
+          );
+          const today = new Date();
+          today.setHours(23, 59, 59, 999);
+
+          // Only show label for every 5th day or last day of month, and not in future
+          if (
+            dayDate <= today &&
+            (dayNumber % 5 === 1 ||
+              dayNumber ===
+                new Date(
+                  dateRange.from.getFullYear(),
+                  dateRange.from.getMonth() + 1,
+                  0
+                ).getDate())
+          ) {
+            return dayNumber.toString();
+          }
+        }
+        return "";
+      }
+      case "year":
+        return (
+          [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+          ][index] || ""
+        );
+      default:
+        return "";
+    }
+  };
+
+  const shouldShowBar = (index: number): boolean => {
+    if (dateRangeType === "month" && dateRange) {
+      const dayNumber = index + 1;
+      const dayDate = new Date(
+        dateRange.from.getFullYear(),
+        dateRange.from.getMonth(),
+        dayNumber
+      );
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      // Only show bar if this day is not in the future
+      return dayDate <= today;
+    }
+    return true;
+  };
+
+  return (
+    <View style={styles.chartContainer}>
+      <View style={styles.chartWithAxis}>
+        {/* Y-Axis Labels */}
+        <View style={styles.yAxis}>
+          {yAxisLabels.map((value, index) => (
+            <Text
+              key={index}
+              style={styles.yAxisLabel}>
+              {formatYAxisLabel(value)}
+            </Text>
+          ))}
+          {/* Invisible label for 0, to keep spacing */}
+          <Text style={[styles.yAxisLabel, { opacity: 0 }]}>0</Text>
+        </View>
+        {/* Chart Bars + Grid Lines */}
+        <View
+          style={styles.chartBars}
+          onLayout={(e) => setChartHeight(e.nativeEvent.layout.height)}>
+          {/* Horizontal grid lines (no 0 line) */}
+          {Array.from({ length: yAxisLabelSlots - 1 }).map((_, index) => (
+            <View
+              key={"hgrid-" + index}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                // 0 (top) to 3 (bottom) for 4 lines, so index/(slots-1)
+                top: `${(index / (yAxisLabelSlots - 1)) * 100}%`,
+                height: 1,
+                backgroundColor: "rgba(255,255,255,0.08)",
+                zIndex: 0,
+              }}
+            />
+          ))}
+          {/* Chart Bars */}
+          {data.map((value, index) => {
+            // Clamp value to [0, chartMax] for safety
+            const clamped = Math.max(0, Math.min(value, chartMax));
+            // Height is proportional to chartMax, so 0 -> 0px, chartMax -> chartHeight
+            const height = (clamped / chartMax) * chartHeight;
+            const showBar = shouldShowBar(index);
+            return (
+              <View
+                key={index}
+                style={styles.barContainer}>
+                {showBar && (
+                  <LinearGradient
+                    colors={[COLORS.primary, COLORS.secondary]}
+                    style={[
+                      styles.bar,
+                      { height: Math.max(height, 2), zIndex: 1 },
+                    ]}
+                  />
+                )}
+                <Text style={[styles.barLabel, !showBar && { opacity: 0.3 }]}>
+                  {getLabel(index)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const StatCard = ({
   title,
   value,
   icon,
+  subtitle,
 }: {
   title: string;
   value: string;
-  icon: React.ComponentProps<typeof MaterialIcons>["name"];
-}) {
-  return (
-    <View style={styles.statCard}>
-      <MaterialIcons
+  icon: keyof typeof Ionicons.glyphMap;
+  subtitle?: string;
+}) => (
+  <LinearGradient
+    colors={GRADIENTS.storyCard}
+    style={styles.statCard}>
+    <View style={styles.statCardHeader}>
+      <Ionicons
         name={icon}
         size={24}
-        color="#3498db"
+        color={COLORS.primary}
       />
-      <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statTitle}>{title}</Text>
     </View>
-  );
-}
+    <Text style={styles.statValue}>{value}</Text>
+    {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
+  </LinearGradient>
+);
 
-function ModeButton({
-  label,
-  mode,
-  current,
-  onPress,
-}: {
-  label: string;
-  mode: ChartMode;
-  current: ChartMode;
-  onPress: () => void;
-}) {
-  const isActive = mode === current;
-
-  return (
-    <TouchableOpacity
-      style={[styles.modeButton, isActive && styles.activeModeButton]}
-      onPress={onPress}>
-      <Text
-        style={[
-          styles.modeButtonText,
-          isActive && styles.activeModeButtonText,
-        ]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-}
-
-// Define chart data generation based on the mode
-function generateChartData(
-  sessions: StepSession[],
-  selectedRange: { from: Date; to: Date },
-  chartMode: ChartMode
-): Array<{ label: string; steps: number; average: number; isToday: boolean }> {
-  // Filter sessions within the selected range
-  const filteredSessions = sessions.filter((session) => {
-    const sessionDate = new Date(session.startTime);
-    return sessionDate >= selectedRange.from && sessionDate <= selectedRange.to;
+export default function StatsScreen() {
+  const { sessions, selectedRange } = useStepStore();
+  const [statsData, setStatsData] = useState<StatsData>({
+    totalSteps: 0,
+    totalCalories: 0,
+    totalDistance: 0,
+    hourlySteps: {},
+    activeDays: 0,
   });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [periodChartData, setPeriodChartData] = useState<{
+    [key: string]: number;
+  }>({});
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const today = new Date();
+    // Create local dates to avoid timezone issues
+    const todayLocal = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    );
+    const todayEndLocal = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      23,
+      59,
+      59
+    );
 
-  if (filteredSessions.length === 0) return [];
+    console.log(`🕐 Initializing with today's date:`, today);
+    console.log(`🕐 Today's ISO string:`, today.toISOString());
+    console.log(`🕐 Today's date string:`, today.toISOString().split("T")[0]);
+    console.log(`🕐 Today local:`, todayLocal);
+    console.log(`🕐 Today local ISO:`, todayLocal.toISOString());
+    console.log(`🕐 Today end local:`, todayEndLocal);
+    console.log(`🕐 Today end local ISO:`, todayEndLocal.toISOString());
 
-  // Get today's date for highlighting
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+    return {
+      from: todayLocal,
+      to: todayEndLocal,
+      type: "day" as DateRangeType,
+    };
+  }); // Check if we have a selected range from the calendar modal
+  useEffect(() => {
+    if (selectedRange.from && selectedRange.to) {
+      console.log("📅 Processing selected range from calendar modal:");
+      console.log("📅 selectedRange.from:", selectedRange.from);
+      console.log("📅 selectedRange.to:", selectedRange.to);
 
-  // Create map to aggregate data
-  const dataMap = new Map<
-    string,
-    { steps: number; count: number; date: Date }
-  >();
+      // Convert string dates back to Date objects if needed
+      const fromDate =
+        selectedRange.from instanceof Date
+          ? selectedRange.from
+          : new Date(selectedRange.from);
+      const toDate =
+        selectedRange.to instanceof Date
+          ? selectedRange.to
+          : new Date(selectedRange.to);
 
-  // Prepare time intervals based on mode
-  let dateFormat: Intl.DateTimeFormatOptions;
-  let intervalType: "day" | "week" | "month" | "year";
+      console.log("📅 Converted fromDate:", fromDate);
+      console.log("📅 Converted fromDate ISO:", fromDate.toISOString());
+      console.log("📅 Converted toDate:", toDate);
+      console.log("📅 Converted toDate ISO:", toDate.toISOString());
 
-  switch (chartMode) {
-    case "day":
-      dateFormat = { hour: "numeric" };
-      intervalType = "day";
-
-      // Create hourly slots for the current day
-      const dayStart = new Date(today);
-      for (let hour = 0; hour < 24; hour++) {
-        const hourDate = new Date(dayStart);
-        hourDate.setHours(hour, 0, 0, 0);
-        const hourKey = hourDate.toLocaleTimeString("en-US", {
-          hour: "numeric",
-        });
-        dataMap.set(hourKey, { steps: 0, count: 0, date: hourDate });
+      // Check if dates are valid
+      if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+        console.log("📅 Invalid dates detected, skipping...");
+        return;
       }
 
-      // Fill with actual data
-      filteredSessions.forEach((session) => {
-        const sessionDate = new Date(session.startTime);
-        const hour = sessionDate.getHours();
-        const hourDate = new Date(sessionDate);
-        hourDate.setHours(hour, 0, 0, 0);
-        const hourKey = hourDate.toLocaleTimeString("en-US", {
-          hour: "numeric",
-        });
+      const diffTime = Math.abs(toDate.getTime() - fromDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        const existing = dataMap.get(hourKey) || {
-          steps: 0,
-          count: 0,
-          date: hourDate,
-        };
-        dataMap.set(hourKey, {
-          steps: existing.steps + session.steps,
-          count: existing.count + 1,
-          date: hourDate,
-        });
-      });
-      break;
+      let type: DateRangeType = "day";
+      let adjustedFromDate = new Date(fromDate);
+      let adjustedToDate = new Date(toDate);
 
-    case "week":
-      dateFormat = { weekday: "short" };
-      intervalType = "week";
-
-      // Create daily slots for the week
-      const weekStart = new Date(today);
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      for (let day = 0; day < 7; day++) {
-        const dayDate = new Date(weekStart);
-        dayDate.setDate(dayDate.getDate() + day);
-        const dayKey = dayDate.toLocaleDateString("en-US", {
-          weekday: "short",
-        });
-        dataMap.set(dayKey, { steps: 0, count: 0, date: dayDate });
+      if (diffDays <= 1) {
+        type = "day";
+      } else if (diffDays <= 7) {
+        type = "week";
+      } else if (diffDays <= 31) {
+        type = "month";
+        // For month view, expand to full month, but not beyond today
+        adjustedFromDate = new Date(
+          fromDate.getFullYear(),
+          fromDate.getMonth(),
+          1
+        );
+        const monthEnd = new Date(
+          fromDate.getFullYear(),
+          fromDate.getMonth() + 1,
+          0,
+          23,
+          59,
+          59
+        );
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        adjustedToDate = monthEnd > today ? today : monthEnd;
+      } else {
+        type = "year";
+        // For year view, expand to full year, but not beyond today
+        adjustedFromDate = new Date(fromDate.getFullYear(), 0, 1);
+        const yearEnd = new Date(fromDate.getFullYear(), 11, 31, 23, 59, 59);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        adjustedToDate = yearEnd > today ? today : yearEnd;
       }
 
-      // Fill with actual data
-      filteredSessions.forEach((session) => {
-        const sessionDate = new Date(session.startTime);
-        const dayKey = sessionDate.toLocaleDateString("en-US", {
-          weekday: "short",
-        });
+      const newRange: DateRange = {
+        from: adjustedFromDate,
+        to: adjustedToDate,
+        type,
+      };
 
-        const dayDate = new Date(sessionDate);
-        dayDate.setHours(0, 0, 0, 0);
+      setDateRange(newRange);
+      loadStatsData(newRange);
+    }
+  }, [selectedRange]);
+  // Helper function to generate date array for a given range
+  const generateDateArray = (range: DateRange): Date[] => {
+    const dates: Date[] = [];
+    const currentDate = new Date(range.from);
+    const endDate = new Date(range.to);
 
-        const existing = dataMap.get(dayKey) || {
-          steps: 0,
-          count: 0,
-          date: dayDate,
-        };
-        dataMap.set(dayKey, {
-          steps: existing.steps + session.steps,
-          count: existing.count + 1,
-          date: dayDate,
-        });
-      });
-      break;
+    // Ensure we don't go beyond today for future dates
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
 
-    case "month":
-      dateFormat = { day: "numeric" };
-      intervalType = "month";
+    const actualEndDate = endDate > today ? today : endDate;
 
-      // Create daily slots for the month
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      for (let day = 1; day <= monthEnd.getDate(); day++) {
-        const dayDate = new Date(monthStart);
-        dayDate.setDate(day);
-        const dayKey = day.toString();
-        dataMap.set(dayKey, { steps: 0, count: 0, date: dayDate });
+    while (currentDate <= actualEndDate) {
+      // Don't include future dates
+      if (currentDate <= today) {
+        dates.push(new Date(currentDate));
       }
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
 
-      // Fill with actual data
-      filteredSessions.forEach((session) => {
-        const sessionDate = new Date(session.startTime);
+    return dates;
+  };
+  // Helper function to get period key for grouping data
+  const getPeriodKey = (date: Date, type: DateRangeType): string => {
+    // Always use local YYYY-MM-DD for period keys (not UTC)
+    const localDateString = `${date.getFullYear()}-${(date.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+    return localDateString;
+  };
+  const loadStatsData = async (range: DateRange) => {
+    try {
+      // Prevent loading data for future dates
+      const today = new Date();
+      if (range.from > today) {
+        console.log("Selected date is in the future, not loading data");
+        setStatsData({
+          totalSteps: 0,
+          totalCalories: 0,
+          totalDistance: 0,
+          hourlySteps: {},
+          activeDays: 0,
+        });
+        return;
+      }
+      if (range.type === "day") {
+        // For single day, use unified timestamp-based approach
+        const selectedDate = range.from;
+        // Always use local date string in YYYY-MM-DD format
+        const dateString = `${selectedDate.getFullYear()}-${(
+          selectedDate.getMonth() + 1
+        )
+          .toString()
+          .padStart(2, "0")}-${selectedDate
+          .getDate()
+          .toString()
+          .padStart(2, "0")}`;
+        console.log(`🔍 Loading day data for: ${dateString}`);
+        console.log(`🔍 Selected date:`, selectedDate);
+        console.log(`🔍 Today's date:`, new Date());
+        console.log(`🔍 Date range:`, range);
 
-        // Only include sessions from the current month
-        if (
-          sessionDate.getMonth() === today.getMonth() &&
-          sessionDate.getFullYear() === today.getFullYear()
-        ) {
-          const day = sessionDate.getDate();
-          const dayKey = day.toString();
+        const [timestamps, hourlyStepsRaw] = await Promise.all([
+          nativeStepCounterService.getStepTimestampsForDate(dateString),
+          nativeStepCounterService.getHourlyStepsForDate(selectedDate),
+        ]);
 
-          const dayDate = new Date(sessionDate);
-          dayDate.setHours(0, 0, 0, 0);
-
-          const existing = dataMap.get(dayKey) || {
-            steps: 0,
-            count: 0,
-            date: dayDate,
-          };
-          dataMap.set(dayKey, {
-            steps: existing.steps + session.steps,
-            count: existing.count + 1,
-            date: dayDate,
+        // If hourlyStepsRaw is empty or all zeros, but timestamps exist, build hourly steps
+        let hourlySteps = { ...hourlyStepsRaw };
+        const hasNonZero = Object.values(hourlyStepsRaw).some((v) => v > 0);
+        if (!hasNonZero && timestamps.length > 0) {
+          // Build hourly steps from timestamps
+          hourlySteps = {};
+          for (let i = 0; i < 24; i++) hourlySteps[i.toString()] = 0;
+          timestamps.forEach((t) => {
+            const d = new Date(t.timestamp);
+            const hour = d.getHours();
+            hourlySteps[hour.toString()] =
+              (hourlySteps[hour.toString()] || 0) + t.steps;
           });
+          console.log("📊 Built hourlySteps from timestamps:", hourlySteps);
         }
-      });
-      break;
 
-    case "year":
-      dateFormat = { month: "short" };
-      intervalType = "year";
+        const totalSteps = timestamps.reduce(
+          (sum, timestamp) => sum + timestamp.steps,
+          0
+        );
+        const totalCalories = totalSteps * 0.04; // Unified calculation
+        const totalDistance = totalSteps * 0.0008;
 
-      // Create monthly slots for the year
-      const yearStart = new Date(today.getFullYear(), 0, 1);
-      for (let month = 0; month < 12; month++) {
-        const monthDate = new Date(yearStart);
-        monthDate.setMonth(month);
-        const monthKey = monthDate.toLocaleDateString("en-US", {
-          month: "short",
+        // Calculate active hours (hours with steps > 0)
+        const activeHours = Object.values(hourlySteps).filter(
+          (steps) => steps > 0
+        ).length;
+
+        setStatsData({
+          totalSteps,
+          totalCalories: Math.round(totalCalories),
+          totalDistance,
+          hourlySteps,
+          activeDays: activeHours, // For day view, this represents active hours
         });
-        dataMap.set(monthKey, { steps: 0, count: 0, date: monthDate });
-      }
 
-      // Fill with actual data
-      filteredSessions.forEach((session) => {
-        const sessionDate = new Date(session.startTime);
+        console.log(`📊 Day stats set:`, {
+          totalSteps,
+          totalCalories: Math.round(totalCalories),
+          totalDistance,
+          hourlySteps,
+          activeDays: activeHours,
+        });
+      } else {
+        // For other periods, collect data from multiple dates using unified approach
+        const dateArray = generateDateArray(range);
+        let totalSteps = 0;
+        let totalCalories = 0;
+        let activeDays = 0;
+        const periodData: { [key: string]: number } = {};
 
-        // Only include sessions from the current year
-        if (sessionDate.getFullYear() === today.getFullYear()) {
-          const monthKey = sessionDate.toLocaleDateString("en-US", {
-            month: "short",
-          });
+        // Collect data for each date in the range
+        for (const date of dateArray) {
+          // Use local date string for period key
+          const dateString = `${date.getFullYear()}-${(date.getMonth() + 1)
+            .toString()
+            .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+          const timestamps =
+            await nativeStepCounterService.getStepTimestampsForDate(dateString);
 
-          const monthDate = new Date(sessionDate);
-          monthDate.setDate(1);
-          monthDate.setHours(0, 0, 0, 0);
+          const daySteps = timestamps.reduce(
+            (sum, timestamp) => sum + timestamp.steps,
+            0
+          );
+          if (daySteps > 0) {
+            totalSteps += daySteps;
+            totalCalories += daySteps * 0.04; // Unified calculation
+            activeDays++;
+          }
 
-          const existing = dataMap.get(monthKey) || {
-            steps: 0,
-            count: 0,
-            date: monthDate,
-          };
-          dataMap.set(monthKey, {
-            steps: existing.steps + session.steps,
-            count: existing.count + 1,
-            date: monthDate,
-          });
+          // Group data by period type
+          const periodKey = getPeriodKey(date, range.type);
+          periodData[periodKey] = (periodData[periodKey] || 0) + daySteps;
         }
-      });
-      break;
-  }
 
-  // Calculate overall average steps
-  const totalSteps = Array.from(dataMap.values()).reduce(
-    (sum, item) => sum + item.steps,
-    0
+        const totalDistance = totalSteps * 0.0008;
+
+        setStatsData({
+          totalSteps,
+          totalCalories: Math.round(totalCalories),
+          totalDistance,
+          hourlySteps: {},
+          activeDays,
+        }); // Store period data for chart
+        setPeriodChartData(periodData);
+
+        console.log(`📊 Period stats set:`, {
+          totalSteps,
+          totalCalories: Math.round(totalCalories),
+          totalDistance,
+          activeDays,
+          periodData,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading stats data:", error);
+    }
+  };
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await loadStatsData(dateRange);
+    setIsRefreshing(false);
+  };
+
+  const handleDateRangeChange = (newRange: DateRange) => {
+    setDateRange(newRange);
+    loadStatsData(newRange);
+  };
+  useEffect(() => {
+    loadStatsData(dateRange);
+
+    // Subscribe to step updates (only for current day)
+    const stepUpdateHandler = () => {
+      if (dateRange.type === "day") {
+        loadStatsData(dateRange);
+      }
+    };
+
+    nativeStepCounterService.onStepUpdate(stepUpdateHandler);
+
+    return () => {
+      nativeStepCounterService.removeStepUpdateListener(stepUpdateHandler);
+    };
+  }, [dateRange, sessions]); // Add sessions dependency  // Generate chart data for different periods
+  const getChartDataForPeriod = () => {
+    console.log(
+      `🔍 getChartDataForPeriod called for dateRange.type:`,
+      dateRange.type
+    );
+    console.log(`🔍 Current statsData:`, statsData);
+
+    if (dateRange.type === "day") {
+      // For day view, return hourly data
+      const hourlyData = Array.from(
+        { length: 24 },
+        (_, index) => statsData.hourlySteps[index.toString()] || 0
+      );
+      console.log(`📊 Day chart data:`, hourlyData);
+      console.log(`📊 Hourly steps data:`, statsData.hourlySteps);
+      console.log(
+        `📊 Each hour breakdown:`,
+        Array.from({ length: 24 }, (_, index) => ({
+          hour: index,
+          steps: statsData.hourlySteps[index.toString()] || 0,
+        }))
+      );
+      return hourlyData;
+    }
+
+    // For other periods, use the period chart data from native service
+    switch (dateRange.type) {
+      case "week": {
+        // Group by day of week (Monday = 0)
+        const weekData = Array(7).fill(0);
+        const dateArray = generateDateArray(dateRange);
+        dateArray.forEach((date) => {
+          const dayOfWeek = (date.getDay() + 6) % 7; // Monday = 0
+          // Use local date string for key
+          const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1)
+            .toString()
+            .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+          weekData[dayOfWeek] += periodChartData[dateKey] || 0;
+        });
+
+        console.log(`📊 Week chart data:`, weekData);
+        console.log(`📊 Period chart data:`, periodChartData);
+        return weekData;
+      }
+      case "month": {
+        // For month view, show daily breakdown (1-31 days)
+        const daysInMonth = new Date(
+          dateRange.from.getFullYear(),
+          dateRange.from.getMonth() + 1,
+          0
+        ).getDate();
+        const monthData = Array(daysInMonth).fill(0);
+        const dateArray = generateDateArray(dateRange);
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+
+        dateArray.forEach((date) => {
+          // Only include data for dates up to today
+          if (date <= today) {
+            const dayOfMonth = date.getDate() - 1; // 0-based index
+            // Use local date string for key
+            const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1)
+              .toString()
+              .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+            if (dayOfMonth >= 0 && dayOfMonth < daysInMonth) {
+              monthData[dayOfMonth] = periodChartData[dateKey] || 0;
+            }
+          }
+        });
+
+        console.log(`📊 Month chart data:`, monthData);
+        console.log(`📊 Period chart data:`, periodChartData);
+        return monthData;
+      }
+      case "year": {
+        // For year view, show monthly breakdown (Jan-Dec)
+        const yearData = Array(12).fill(0);
+        const dateArray = generateDateArray(dateRange);
+        dateArray.forEach((date) => {
+          const month = date.getMonth();
+          // Use local date string for key
+          const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1)
+            .toString()
+            .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+          yearData[month] += periodChartData[dateKey] || 0;
+        });
+
+        console.log(`📊 Year chart data:`, yearData);
+        console.log(`📊 Period chart data:`, periodChartData);
+        return yearData;
+      }
+      default:
+        return [];
+    }
+  };
+  const getChartTitle = () => {
+    switch (dateRange.type) {
+      case "day":
+        return "Hourly Activity";
+      case "week":
+        return "Daily Activity";
+      case "month":
+        return "Daily Activity";
+      case "year":
+        return "Monthly Activity";
+    }
+  };
+  const getChartSubtitle = () => {
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    };
+
+    const formatMonth = (date: Date) => {
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+      });
+    };
+
+    const formatYear = (date: Date) => {
+      return date.getFullYear().toString();
+    };
+
+    switch (dateRange.type) {
+      case "day":
+        return `Steps for ${formatDate(dateRange.from)}`;
+      case "week":
+        return `Steps from ${formatDate(dateRange.from)} to ${formatDate(
+          dateRange.to
+        )}`;
+      case "month":
+        return `Daily steps for ${formatMonth(dateRange.from)}`;
+      case "year":
+        return `Monthly steps for ${formatYear(dateRange.from)}`;
+    }
+  };
+  const getMaxDaysForPeriod = () => {
+    switch (dateRange.type) {
+      case "day":
+        return 1;
+      case "week":
+        return 7;
+      case "month": {
+        // Get actual number of days in the month
+        const year = dateRange.from.getFullYear();
+        const month = dateRange.from.getMonth();
+        return new Date(year, month + 1, 0).getDate();
+      }
+      case "year": {
+        // Get actual number of days in the year (accounting for leap years)
+        const year = dateRange.from.getFullYear();
+        const isLeapYear =
+          (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+        return isLeapYear ? 366 : 365;
+      }
+    }
+  };
+  return (
+    <ImageBackground
+      source={require("../../assets/images/stepio-background.png")}
+      style={styles.container}
+      resizeMode="cover">
+      <StatusBar style="light" />
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            progressBackgroundColor={COLORS.darkCard}
+          />
+        }>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Your Stats</Text>
+              <Text style={styles.headerSubtitle}>Activity Overview</Text>
+            </View>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.debugButton}
+                onPress={async () => {
+                  console.log("🔍 Debug button pressed - logging JSON data...");
+                  await nativeStepCounterService.logTodayJsonData();
+                }}>
+                <LinearGradient
+                  colors={[COLORS.secondary, COLORS.primary]}
+                  style={styles.calendarButtonGradient}>
+                  <Ionicons
+                    name="bug"
+                    size={20}
+                    color={COLORS.white}
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.calendarButton}
+                onPress={() => router.push("/modal")}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.secondary]}
+                  style={styles.calendarButtonGradient}>
+                  <Ionicons
+                    name="calendar"
+                    size={24}
+                    color={COLORS.white}
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+        {/* Summary Cards */}
+        <View style={styles.summaryContainer}>
+          <View style={styles.statsGrid}>
+            <StatCard
+              title="Steps"
+              value={statsData.totalSteps.toLocaleString()}
+              icon="footsteps"
+              subtitle="total"
+            />
+            <StatCard
+              title="Distance"
+              value={`${statsData.totalDistance.toFixed(2)} km`}
+              icon="map"
+              subtitle="traveled"
+            />
+            <StatCard
+              title="Calories"
+              value={`${statsData.totalCalories}`}
+              icon="flame"
+              subtitle="burned"
+            />
+            <StatCard
+              title={dateRange.type === "day" ? "Active Hours" : "Active Days"}
+              value={`${statsData.activeDays}`}
+              icon="time"
+              subtitle={
+                dateRange.type === "day"
+                  ? "of 24"
+                  : `of ${getMaxDaysForPeriod()}`
+              }
+            />
+          </View>
+        </View>
+        {/* Chart Section */}
+        <LinearGradient
+          colors={GRADIENTS.storyCard}
+          style={styles.chartSection}>
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartTitle}>{getChartTitle()}</Text>
+            <Text style={styles.chartSubtitle}>{getChartSubtitle()}</Text>
+          </View>
+          <SimpleChart
+            data={getChartDataForPeriod()}
+            dateRangeType={dateRange.type}
+            dateRange={dateRange}
+          />
+        </LinearGradient>
+      </ScrollView>
+    </ImageBackground>
   );
-  const totalItems =
-    Array.from(dataMap.values()).filter((item) => item.steps > 0).length || 1;
-  const averageSteps = Math.max(1000, totalSteps / totalItems);
-
-  // Build the final data array
-  return Array.from(dataMap.entries())
-    .map(([label, data]) => ({
-      label,
-      steps: data.steps,
-      average: averageSteps,
-      isToday: data.date.toDateString() === today.toDateString(),
-    }))
-    .sort((a, b) => {
-      if (chartMode === "week") {
-        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        return days.indexOf(a.label) - days.indexOf(b.label);
-      }
-      return 0;
-    });
-}
-
-// Format tick labels for the chart based on chart mode
-function getTickFormat(tick: string, mode: ChartMode): string {
-  switch (mode) {
-    case "day":
-      return tick; // Hour format
-    case "week":
-      return tick; // Weekday name
-    case "month":
-      return tick; // Day number
-    case "year":
-      return tick; // Month name
-    default:
-      return tick;
-  }
-}
-
-// Helper function to format date range
-function formatDateRange(from: Date, to: Date): string {
-  // For same day
-  if (from.toDateString() === to.toDateString()) {
-    return from.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-
-  // For same month
-  if (
-    from.getMonth() === to.getMonth() &&
-    from.getFullYear() === to.getFullYear()
-  ) {
-    return `${from.getDate()} - ${to.getDate()} ${from.toLocaleDateString(
-      "en-US",
-      { month: "short" }
-    )}`;
-  }
-
-  // Different months
-  return `${from.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  })} - ${to.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-}
-
-// Helper function to format duration
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-
-  if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`;
-  }
-
-  return `${minutes}m ${seconds % 60}s`;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.darkBackground,
   },
-  summaryContainer: {
-    padding: 16,
-    backgroundColor: "#fff",
-    marginBottom: 16,
+  scrollView: {
+    flex: 1,
   },
-  summaryHeader: {
+  header: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xxl,
+    paddingBottom: SPACING.lg,
+  },
+  headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
   },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+  headerTextContainer: {
+    flex: 1,
   },
-  datePickerButton: {
-    flexDirection: "row",
+  headerTitle: {
+    ...FONTS.cyber,
+    fontSize: FONTS.sizes.xxl,
+    color: COLORS.white,
+    marginBottom: SPACING.sm,
+  },
+  headerSubtitle: {
+    ...FONTS.medium,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.darkMuted,
+  },
+  calendarButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignSelf: "center",
+  },
+  calendarButtonGradient: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f0f0f0",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 12,
   },
-  dateText: {
-    color: "#3498db",
-    marginRight: 4,
+  summaryContainer: {
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
   },
   statsGrid: {
     flexDirection: "row",
@@ -670,154 +896,117 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   statCard: {
-    width: "48%",
-    backgroundColor: "#f9f9f9",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    alignItems: "center",
+    width: (width - SPACING.lg * 3) / 2,
+    padding: SPACING.md,
+    marginBottom: SPACING.md,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
   },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    marginVertical: 8,
+  statCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SPACING.sm,
   },
   statTitle: {
-    fontSize: 14,
-    color: "#666",
+    ...FONTS.medium,
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.darkMuted,
+    marginLeft: SPACING.sm,
   },
-  chartContainer: {
-    padding: 16,
-    backgroundColor: "#fff",
-    marginBottom: 16,
+  statValue: {
+    ...FONTS.bold,
+    fontSize: FONTS.sizes.xl,
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
+  },
+  statSubtitle: {
+    ...FONTS.regular,
+    fontSize: FONTS.sizes.xs,
+    color: COLORS.darkMuted,
+  },
+  chartSection: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+    padding: SPACING.lg,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
   },
   chartHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   chartTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+    ...FONTS.bold,
+    fontSize: FONTS.sizes.lg,
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
   },
-  modeSwitcher: {
+  chartSubtitle: {
+    ...FONTS.regular,
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.darkMuted,
+  },
+  chartContainer: {
+    height: 180,
+    justifyContent: "flex-end",
+  },
+  chartWithAxis: {
     flexDirection: "row",
-    backgroundColor: "#f0f0f0",
-    borderRadius: 20,
-    padding: 4,
+    alignItems: "flex-end",
+    height: 160,
   },
-  modeButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+  yAxis: {
+    width: 15, // Még kisebb szélesség
+    height: 140,
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    paddingRight: 0, // Nincs padding
+    marginRight: 2, // Minimális margin
   },
-  activeModeButton: {
-    backgroundColor: "#3498db",
+  yAxisLabel: {
+    ...FONTS.regular,
+    fontSize: 8, // Smaller font
+    color: COLORS.darkMuted,
+    textAlign: "right",
   },
-  modeButtonText: {
-    color: "#666",
-    fontWeight: "500",
-  },
-  activeModeButtonText: {
-    color: "#fff",
-  },
-  chartWrapper: {
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 16,
-  },
-  chartLegend: {
+  chartBars: {
+    flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 8,
+    alignItems: "flex-end",
+    height: 140,
+    paddingLeft: SPACING.xs, // Adjunk vissza kis padding-et
+    paddingRight: SPACING.xs,
   },
-  legendItem: {
+  barContainer: {
+    alignItems: "center",
+    flex: 1,
+    marginHorizontal: 0.5,
+    maxWidth: 25,
+  },
+  bar: {
+    width: 8,
+    borderRadius: 4,
+    minHeight: 2,
+  },
+  barLabel: {
+    ...FONTS.regular,
+    fontSize: 8,
+    color: COLORS.darkMuted,
+    marginTop: SPACING.xs / 2,
+    textAlign: "center",
+  },
+  headerButtons: {
     flexDirection: "row",
     alignItems: "center",
   },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: 8,
-  },
-  legendText: {
-    fontSize: 14,
-    color: "#333",
-  },
-  chartPlaceholder: {
-    height: 200,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  placeholderText: {
-    color: "#999",
-    fontStyle: "italic",
-  },
-  recentActivityContainer: {
-    padding: 16,
-    backgroundColor: "#fff",
-  },
-  recentActivityTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 16,
-  },
-  activityCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  activityIconContainer: {
+  debugButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#e6f3fd",
-    alignItems: "center",
+    marginLeft: SPACING.md,
     justifyContent: "center",
-    marginRight: 16,
-  },
-  activityDetails: {
-    flex: 1,
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-  },
-  activitySubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginTop: 4,
-  },
-  emptyState: {
-    padding: 24,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
     alignItems: "center",
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 16,
-  },
-  startTrackingButton: {
-    backgroundColor: "#3498db",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 50,
-  },
-  startTrackingButtonText: {
-    color: "#fff",
-    fontWeight: "500",
   },
 });

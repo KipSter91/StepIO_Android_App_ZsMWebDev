@@ -13,10 +13,11 @@ import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import useStepStore from "../../src/store/useStepStore";
 import TrackedMap from "../../components/TrackedMap";
 import * as TaskManager from "expo-task-manager";
-import { COLORS, FONTS, SPACING } from "../../styles/theme";
+import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
 import { nativeStepCounterService } from "../../src/services/nativeStepCounterService";
 import { Region } from "react-native-maps";
 
@@ -705,7 +706,11 @@ export default function PathTrackingScreen() {
       </View>
       {/* Tracking info card */}
       <View style={styles.statsCard}>
-        <View style={styles.cardGradient}>
+        <LinearGradient
+          colors={GRADIENTS.storyCard}
+          style={styles.cardGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}>
           <Animated.View style={{ opacity: infoOpacity, width: "100%" }}>
             {showTracking ? (
               <View style={styles.trackingInfoRow}>
@@ -737,7 +742,7 @@ export default function PathTrackingScreen() {
               </View>
             )}
           </Animated.View>
-        </View>
+        </LinearGradient>
       </View>
       {/* Start/Stop button */}
       <View style={styles.buttonContainer}>
@@ -745,23 +750,35 @@ export default function PathTrackingScreen() {
           <TouchableOpacity
             style={styles.startButton}
             onPress={handleStartTracking}>
-            <MaterialIcons
-              name="play-arrow"
-              size={28}
-              color={"#fff"}
-            />
-            <Text style={styles.buttonText}>Start Tracking</Text>
+            <LinearGradient
+              colors={GRADIENTS.primaryToSecondary}
+              style={styles.buttonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}>
+              <MaterialIcons
+                name="play-arrow"
+                size={28}
+                color={"#fff"}
+              />
+              <Text style={styles.buttonText}>Start Tracking</Text>
+            </LinearGradient>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={styles.stopButton}
             onPress={handleStopTracking}>
-            <MaterialIcons
-              name="stop"
-              size={28}
-              color={"#fff"}
-            />
-            <Text style={styles.buttonText}>Stop Tracking</Text>
+            <LinearGradient
+              colors={["#ff4757", "#ff3838"]}
+              style={styles.buttonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}>
+              <MaterialIcons
+                name="stop"
+                size={28}
+                color={"#fff"}
+              />
+              <Text style={styles.buttonText}>Stop Tracking</Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
       </View>
@@ -814,31 +831,30 @@ const styles = StyleSheet.create({
   backgroundImage: {
     width: "100%",
     height: "100%",
-    opacity: 0.3,
+    opacity: 0.6,
   },
   mapContainer: {
     flex: 1,
     top: 20,
   },
   statsCard: {
-    borderRadius: 16, // larger radius
+    borderRadius: 16,
     overflow: "hidden",
     marginHorizontal: SPACING.lg,
     marginTop: -32,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xl,
     borderWidth: 1,
-    borderColor: "rgba(0, 255, 204, 0.3)",
-    backgroundColor: "rgba(19, 24, 36, 0.75)",
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderColor: COLORS.darkBorder,
+    position: "relative",
+    minHeight: 140,
   },
   cardGradient: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     padding: SPACING.lg,
-    backgroundColor: "rgba(29, 34, 53, 0.9)",
-    borderRadius: 16, // match statsCard
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
@@ -869,26 +885,28 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   startButton: {
-    flexDirection: "row",
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     width: "60%",
+    overflow: "hidden",
     // Removed shadow and elevation for a cleaner look
   },
   stopButton: {
-    flexDirection: "row",
-    backgroundColor: COLORS.danger,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     width: "60%",
+    overflow: "hidden",
     // Removed shadow and elevation for a cleaner look
+  },
+  buttonGradient: {
+    flexDirection: "row",
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
   },
   buttonText: {
     color: COLORS.white,

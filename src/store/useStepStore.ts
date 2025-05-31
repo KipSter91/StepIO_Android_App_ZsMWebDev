@@ -33,7 +33,7 @@ interface StepStore {
   userProfile: UserProfile;
   chartMode: ChartMode;
   activeSession: StepSession | null;
-  selectedRange: { from: Date; to: Date };
+  selectedRange: { from: string | Date; to: string | Date };
   isTracking: boolean;
 
   // App initialization state
@@ -267,6 +267,18 @@ export const useStepStore = create<StepStore>()(
         set(() => ({ chartMode: mode }));
       },
       setDateRange: (from, to) => {
+        console.log("🏪 Store setDateRange called with:");
+        console.log("🏪 From:", from);
+        console.log(
+          "🏪 From ISO:",
+          from instanceof Date ? from.toISOString() : "Not a Date"
+        );
+        console.log("🏪 To:", to);
+        console.log(
+          "🏪 To ISO:",
+          to instanceof Date ? to.toISOString() : "Not a Date"
+        );
+
         set(() => ({
           selectedRange: { from, to },
         }));
