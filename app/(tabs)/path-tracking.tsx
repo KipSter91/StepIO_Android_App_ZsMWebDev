@@ -151,31 +151,29 @@ export default function PathTrackingScreen() {
   );
   const [isMapLoading, setIsMapLoading] = useState(true);
   const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  // Lekérjük a user pozícióját amikor a komponens betölt
-  useEffect(() => {
-    const getUserLocation = async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === "granted") {
-          const location = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Highest,
-          });
-
-          setInitialRegion({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-            latitudeDelta: 0.005, // Közelebb zoomolunk
-            longitudeDelta: 0.005,
-          });
-        }
-        setIsMapLoading(false);
-      } catch (error) {
-        console.error("Error getting location:", error);
-        setIsMapLoading(false);
+  // Get the user's position when the component loads
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Highest,
+        });
+        setInitialRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.005, // Zoom in closer
+          longitudeDelta: 0.005,
+        });
       }
-    };
+      setIsMapLoading(false);
+    } catch (error) {
+      console.error("Error getting location:", error);
+      setIsMapLoading(false);
+    }
+  };
 
+  useEffect(() => {
     getUserLocation();
   }, []);
 
@@ -194,7 +192,7 @@ export default function PathTrackingScreen() {
         useNativeDriver: true,
       }).start();
     });
-  }, [isTracking]); // Pulzáló animáció az ikonhoz
+  }, [isTracking]); // Pulsing animation for the icon
   useEffect(() => {
     if (isMapLoading) {
       Animated.loop(
@@ -635,7 +633,9 @@ export default function PathTrackingScreen() {
 
       // Stop location updates
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log("[PathTracking] TaskManager location updates stopped");
+      console.log("[PathTracking] TaskManager location updates stopped"); // NEW: shimmer and reinitialization
+      setIsMapLoading(true);
+      getUserLocation();
     } catch (error) {
       console.error("Error stopping tracking:", error);
       Alert.alert("Error", "Failed to stop path tracking");
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
     top: 20,
   },
   statsCard: {
-    borderRadius: 16, // nagyobb kerekítés
+    borderRadius: 16, // larger radius
     overflow: "hidden",
     marginHorizontal: SPACING.lg,
     marginTop: -32,
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   cardGradient: {
     padding: SPACING.lg,
     backgroundColor: "rgba(29, 34, 53, 0.9)",
-    borderRadius: 16, // egyezzen a statsCard-dal
+    borderRadius: 16, // match statsCard
     flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
@@ -877,26 +877,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: "60%",
-    // shadowColor: COLORS.primary,
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.15,
-    // shadowRadius: 6,
-    // elevation: 3,
+    // Removed shadow and elevation for a cleaner look
   },
   stopButton: {
     flexDirection: "row",
     backgroundColor: COLORS.danger,
     paddingVertical: 14,
     paddingHorizontal: 32,
-    borderRadius: 50,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
     width: "60%",
-    // shadowColor: COLORS.danger,
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.15,
-    // shadowRadius: 6,
-    elevation: 3,
+    // Removed shadow and elevation for a cleaner look
   },
   buttonText: {
     color: COLORS.white,
