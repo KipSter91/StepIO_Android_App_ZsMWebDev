@@ -7,6 +7,7 @@ import {
   Alert,
   Image,
   Animated,
+  Easing,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
@@ -17,6 +18,7 @@ import TrackedMap from "../../components/TrackedMap";
 import * as TaskManager from "expo-task-manager";
 import { COLORS, FONTS, SPACING } from "../../styles/theme";
 import { nativeStepCounterService } from "../../src/services/nativeStepCounterService";
+import { Region } from "react-native-maps";
 
 const LOCATION_TASK_NAME = "location-tracking";
 
@@ -70,17 +72,19 @@ TaskManager.defineTask(
           ) {
             console.log("[TaskManager] Skipping invalid background location");
             continue;
-          }          const newCoord = {
+          }
+          const newCoord = {
             lat: location.coords.latitude,
             lon: location.coords.longitude,
             timestamp: location.timestamp,
           };
 
           // Check distance from last coordinate to avoid GPS noise
-          const lastCoord = store.activeSession.coordinates?.[
-            store.activeSession.coordinates.length - 1
-          ];
-          
+          const lastCoord =
+            store.activeSession.coordinates?.[
+              store.activeSession.coordinates.length - 1
+            ];
+
           if (lastCoord) {
             const distance = calculateDistance(
               lastCoord.lat,
@@ -88,9 +92,13 @@ TaskManager.defineTask(
               newCoord.lat,
               newCoord.lon
             );
-              // Only add if moved at least 2 meters (for testing)
+            // Only add if moved at least 2 meters (for testing)
             if (distance < 0.002) {
-              console.log("[TaskManager] Skipping coordinate - too close to previous one:", distance * 1000, "m");
+              console.log(
+                "[TaskManager] Skipping coordinate - too close to previous one:",
+                distance * 1000,
+                "m"
+              );
               continue;
             }
           }
@@ -138,6 +146,38 @@ export default function PathTrackingScreen() {
   // Fade effect for info card
   const infoOpacity = useRef(new Animated.Value(1)).current;
   const [showTracking, setShowTracking] = useState(isTracking);
+  const [initialRegion, setInitialRegion] = useState<Region | undefined>(
+    undefined
+  );
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  // Lekérjük a user pozícióját amikor a komponens betölt
+  useEffect(() => {
+    const getUserLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Highest,
+          });
+
+          setInitialRegion({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            latitudeDelta: 0.005, // Közelebb zoomolunk
+            longitudeDelta: 0.005,
+          });
+        }
+        setIsMapLoading(false);
+      } catch (error) {
+        console.error("Error getting location:", error);
+        setIsMapLoading(false);
+      }
+    };
+
+    getUserLocation();
+  }, []);
 
   useEffect(() => {
     // Fade out
@@ -154,7 +194,30 @@ export default function PathTrackingScreen() {
         useNativeDriver: true,
       }).start();
     });
-  }, [isTracking]);
+  }, [isTracking]); // Pulzáló animáció az ikonhoz
+  useEffect(() => {
+    if (isMapLoading) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(shimmerAnim, {
+            toValue: 0,
+            duration: 1000,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      shimmerAnim.setValue(0);
+    }
+  }, [isMapLoading]);
+
   // Calculate elapsed time for timer (drift-free)
   const elapsed =
     isTracking && activeSession
@@ -375,7 +438,8 @@ export default function PathTrackingScreen() {
   }, []); // Start location tracking
   const startLocationUpdates = async () => {
     try {
-      console.log("[PathTracking] Starting location updates...");      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+      console.log("[PathTracking] Starting location updates...");
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.Highest,
         timeInterval: 5000, // 5 seconds for testing
         distanceInterval: 2, // minimum distance in meters (for testing)
@@ -391,7 +455,8 @@ export default function PathTrackingScreen() {
       // Subscribe to location updates with proper cleanup
       if (locationWatcherRef.current) {
         locationWatcherRef.current.remove();
-      }      locationWatcherRef.current = await Location.watchPositionAsync(
+      }
+      locationWatcherRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Highest,
           timeInterval: 5000, // 5 seconds for testing
@@ -436,7 +501,7 @@ export default function PathTrackingScreen() {
               currentSession.coordinates?.[
                 currentSession.coordinates.length - 1
               ];
-            const now = Date.now();            // Throttle updates to max once every 3 seconds for testing
+            const now = Date.now(); // Throttle updates to max once every 3 seconds for testing
             if (now - lastLocationUpdateRef.current < 3000) {
               console.log("[PathTracking] Throttling location update");
               return;
@@ -598,12 +663,45 @@ export default function PathTrackingScreen() {
       </View>
       {/* Map background */}
       <View style={styles.mapContainer}>
-        <TrackedMap
-          coordinates={activeSession?.coordinates || []}
-          autoCenter={isTracking}
-          readOnly={false}
-          followUser={isTracking}
-        />
+        {isMapLoading ? (
+          <View style={styles.loadingContainer}>
+            <View style={styles.iconWrapper}>
+              <MaterialIcons
+                name="explore"
+                size={48}
+                color={COLORS.primary}
+              />
+              <Animated.View
+                style={[
+                  styles.spinner,
+                  {
+                    opacity: shimmerAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.3, 0.8],
+                    }),
+                    transform: [
+                      {
+                        scale: shimmerAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.2],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            </View>
+            <Text style={styles.loadingText}>Map is loading...</Text>
+          </View>
+        ) : (
+          <TrackedMap
+            coordinates={activeSession?.coordinates || []}
+            autoCenter={isTracking}
+            readOnly={false}
+            followUser={isTracking}
+            initialRegion={initialRegion}
+          />
+        )}
       </View>
       {/* Tracking info card */}
       <View style={styles.statsCard}>
@@ -819,5 +917,38 @@ const styles = StyleSheet.create({
     color: COLORS.warning,
     textAlign: "center",
     margin: 20,
+  }, // Loading effect styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(29, 34, 53, 0.9)",
+    margin: SPACING.lg,
+    borderRadius: 16,
+    gap: SPACING.md,
+  },
+  iconWrapper: {
+    position: "relative",
+    width: 80,
+    height: 80,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  spinner: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: `${COLORS.primary}20`,
+    borderTopColor: COLORS.primary,
+  },
+  loadingText: {
+    marginTop: SPACING.sm,
+    color: COLORS.darkMuted,
+    fontSize: FONTS.sizes.sm,
+    fontWeight: "600",
   },
 });
