@@ -98,9 +98,11 @@ export default function HomeScreen() {
 
   // Daily motivation logic (random but deterministic per day, leak-proof)
   const getDailyMotivation = () => {
-    // YYYY-MM-DD string for today
+    // YYYY-MM-DD string for today using local date to avoid timezone issues
     const today = new Date();
-    const dateString = today.toISOString().slice(0, 10);
+    const dateString = `${today.getFullYear()}-${(today.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`;
     // Simple hash function (djb2)
     let hash = 5381;
     for (let i = 0; i < dateString.length; i++) {

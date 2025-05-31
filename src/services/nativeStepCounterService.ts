@@ -167,11 +167,13 @@ class NativeStepCounterService {
     }
     return hourlySteps;
   }
-
   // Get hourly steps for any specific date
   public async getHourlyStepsForDate(date: Date): Promise<HourlySteps> {
     try {
-      const dateString = date.toISOString().split("T")[0];
+      // Use local date string to avoid timezone issues
+      const dateString = `${date.getFullYear()}-${(date.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
       const timestamps = await this.getStepTimestampsForDate(dateString);
       return this.convertTimestampsToHourly(timestamps);
     } catch {
@@ -179,21 +181,26 @@ class NativeStepCounterService {
       for (let hour = 0; hour < 24; hour++) emptyData[hour.toString()] = 0;
       return emptyData;
     }
-  }
-  // Get all step timestamps for a given date (YYYY-MM-DD), with cache for past days
+  } // Get all step timestamps for a given date (YYYY-MM-DD), with cache for past days
   public async getStepTimestampsForDate(
     date: string
   ): Promise<StepTimestamp[]> {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      // Use local date to avoid timezone issues
+      const today = new Date();
+      const todayString = `${today.getFullYear()}-${(today.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`;
 
-      // Don't return data for future dates
-      if (date > today) {
+      // Don't return data for future dates - parse as dates for proper comparison
+      const requestedDate = new Date(date + "T00:00:00");
+      const todayDate = new Date(todayString + "T00:00:00");
+
+      if (requestedDate > todayDate) {
         return [];
       }
-
       if (
-        date !== today &&
+        date !== todayString &&
         timestampCache[date] &&
         timestampCache[date].expires > Date.now()
       ) {
@@ -210,7 +217,7 @@ class NativeStepCounterService {
       } else {
         parsedResult = result;
       }
-      if (date !== today) {
+      if (date !== todayString) {
         const cacheKeys = Object.keys(timestampCache);
         if (cacheKeys.length >= MAX_CACHE_ENTRIES) {
           const oldestKey = cacheKeys.sort()[0];
@@ -292,27 +299,51 @@ class NativeStepCounterService {
     Object.keys(timestampCache).forEach((key) => {
       delete timestampCache[key];
     });
-  }
-
-  // Debug function to log today's JSON data
+  } // Debug function to log today's JSON data
   async logTodayJsonData(): Promise<void> {
     try {
-      const today = new Date().toISOString().split("T")[0];
-      console.log(`🔍 Fetching JSON data for today: ${today}`);
+      const today = new Date();
+      const todayString = `${today.getFullYear()}-${(today.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`;
 
-      const jsonData = await NativeStepCounter.getStepTimestampsForDate(today);
+      console.log(`🔍 Current date object:`, today);
+      console.log(
+        `🔍 Today's timezone offset (minutes):`,
+        today.getTimezoneOffset()
+      );
+      console.log(`🔍 Today's ISO string:`, today.toISOString());
+      console.log(`🔍 Today's local date string:`, todayString);
+      console.log(`🔍 Fetching JSON data for today: ${todayString}`);
+
+      const jsonData = await NativeStepCounter.getStepTimestampsForDate(
+        todayString
+      );
       console.log(
         `📊 Raw JSON data from native:`,
         JSON.stringify(jsonData, null, 2)
       );
 
       // Also log the parsed timestamps
-      const timestamps = await this.getStepTimestampsForDate(today);
-      console.log(`📈 Parsed timestamps for ${today}:`, timestamps);
+      const timestamps = await this.getStepTimestampsForDate(todayString);
+      console.log(`📈 Parsed timestamps for ${todayString}:`, timestamps);
+
+      // Analyze timestamp timezone info
+      if (timestamps.length > 0) {
+        const firstTimestamp = timestamps[0];
+        const timestampDate = new Date(firstTimestamp.timestamp);
+        console.log(`🕐 First timestamp analysis:`);
+        console.log(`  - Raw timestamp: ${firstTimestamp.timestamp}`);
+        console.log(`  - As Date object: ${timestampDate}`);
+        console.log(`  - UTC string: ${timestampDate.toISOString()}`);
+        console.log(`  - Local string: ${timestampDate.toLocaleString()}`);
+        console.log(`  - Hour (local): ${timestampDate.getHours()}`);
+        console.log(`  - Hour (UTC): ${timestampDate.getUTCHours()}`);
+      }
 
       // Log hourly breakdown
-      const hourlySteps = await this.getHourlyStepsForDate(new Date());
-      console.log(`⏰ Hourly steps for ${today}:`, hourlySteps);
+      const hourlySteps = await this.getHourlyStepsForDate(today);
+      console.log(`⏰ Hourly steps for ${todayString}:`, hourlySteps);
 
       // Log today's totals
       const todaySteps = await this.getTodaySteps();

@@ -701,6 +701,7 @@ export default function PathTrackingScreen() {
             readOnly={false}
             followUser={isTracking}
             initialRegion={initialRegion}
+            isTrackingActive={isTracking}
           />
         )}
       </View>

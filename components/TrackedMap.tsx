@@ -7,6 +7,169 @@ import MapView, {
   Region,
 } from "react-native-maps";
 import { MaterialIcons } from "@expo/vector-icons";
+import { COLORS } from "../styles/theme";
+
+// Custom dark map style for cyberpunk aesthetic
+const darkMapStyle = [
+  {
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#0F1420",
+      },
+    ],
+  },
+  {
+    elementType: "labels.icon",
+    stylers: [
+      {
+        visibility: "off",
+      },
+    ],
+  },
+  {
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#00FFCC",
+      },
+    ],
+  },
+  {
+    elementType: "labels.text.stroke",
+    stylers: [
+      {
+        color: "#0F1420",
+      },
+    ],
+  },
+  {
+    featureType: "administrative.land_parcel",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#8A94A6",
+      },
+    ],
+  },
+  {
+    featureType: "poi",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#131824",
+      },
+    ],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#B45FFF",
+      },
+    ],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#1D2235",
+      },
+    ],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#00FF66",
+      },
+    ],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#2B3044",
+      },
+    ],
+  },
+  {
+    featureType: "road.arterial",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#2B3044",
+      },
+    ],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#5499FF",
+      },
+    ],
+  },
+  {
+    featureType: "road.highway.controlled_access",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#5499FF",
+      },
+    ],
+  },
+  {
+    featureType: "road.local",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#8A94A6",
+      },
+    ],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#131824",
+      },
+    ],
+  },
+  {
+    featureType: "transit.station",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#B45FFF",
+      },
+    ],
+  },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [
+      {
+        color: "#00FFCC",
+      },
+    ],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [
+      {
+        color: "#0F1420",
+      },
+    ],
+  },
+];
 
 export interface LatLng {
   lat: number;
@@ -22,6 +185,7 @@ interface TrackedMapProps {
   endMarker?: boolean;
   followUser?: boolean;
   initialRegion?: Region;
+  isTrackingActive?: boolean; // New prop to control user location visibility
 }
 
 const TrackedMap = ({
@@ -32,6 +196,7 @@ const TrackedMap = ({
   endMarker = true,
   followUser = true,
   initialRegion,
+  isTrackingActive = false,
 }: TrackedMapProps) => {
   const mapRef = useRef<MapView>(null);
 
@@ -51,32 +216,32 @@ const TrackedMap = ({
       animated: true,
     });
   }, [autoCenter, coordinates, formattedCoordinates]);
-
   return (
     <View style={styles.container}>
       <MapView
         ref={mapRef}
         style={styles.map}
         provider={PROVIDER_GOOGLE}
+        customMapStyle={darkMapStyle}
         initialRegion={initialRegion}
-        showsUserLocation={!readOnly}
-        followsUserLocation={followUser}
-        showsMyLocationButton={!readOnly}
+        showsUserLocation={!readOnly && !isTrackingActive}
+        followsUserLocation={followUser && !isTrackingActive}
+        showsMyLocationButton={!readOnly && !isTrackingActive}
+        showsBuildings={false}
+        showsIndoors={false}
         mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}>
         {formattedCoordinates.length > 0 && (
           <>
             <Polyline
               coordinates={formattedCoordinates}
-              strokeWidth={4}
-              strokeColor="#2196F3"
+              strokeWidth={2}
+              strokeColor={COLORS.primary}
             />
-
-            {startMarker && coordinates.length > 0 && (
+            {startMarker && formattedCoordinates.length > 0 && (
               <Marker
-                coordinate={{
-                  latitude: coordinates[0].lat,
-                  longitude: coordinates[0].lon,
-                }}>
+                coordinate={formattedCoordinates[0]}
+                anchor={{ x: 0.5, y: 0.5 }}
+                centerOffset={{ x: 0, y: 0 }}>
                 <View style={[styles.markerContainer, styles.startMarker]}>
                   <MaterialIcons
                     name="play-arrow"
@@ -86,13 +251,13 @@ const TrackedMap = ({
                 </View>
               </Marker>
             )}
-
-            {endMarker && coordinates.length > 1 && (
+            {endMarker && formattedCoordinates.length > 1 && (
               <Marker
-                coordinate={{
-                  latitude: coordinates[coordinates.length - 1].lat,
-                  longitude: coordinates[coordinates.length - 1].lon,
-                }}>
+                coordinate={
+                  formattedCoordinates[formattedCoordinates.length - 1]
+                }
+                anchor={{ x: 0.5, y: 0.5 }}
+                centerOffset={{ x: 0, y: 0 }}>
                 <View style={[styles.markerContainer, styles.endMarker]}>
                   <MaterialIcons
                     name="flag"
@@ -120,19 +285,20 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   markerContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
   },
   startMarker: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: COLORS.success,
   },
   endMarker: {
-    backgroundColor: "#F44336",
+    backgroundColor: COLORS.danger,
   },
 });
 
 export default TrackedMap;
-

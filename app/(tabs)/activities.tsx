@@ -115,7 +115,14 @@ function ActivityItem({
 function groupSessionsByDate(sessions: StepSession[]) {
   return sessions.reduce(
     (groups: { [key: string]: StepSession[] }, session) => {
-      const date = new Date(session.startTime).toISOString().split("T")[0];
+      // Use local date to avoid timezone issues
+      const sessionDate = new Date(session.startTime);
+      const date = `${sessionDate.getFullYear()}-${(sessionDate.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${sessionDate
+        .getDate()
+        .toString()
+        .padStart(2, "0")}`;
 
       if (!groups[date]) {
         groups[date] = [];
