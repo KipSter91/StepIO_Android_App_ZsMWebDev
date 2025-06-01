@@ -1,6 +1,5 @@
 import React from "react";
-import { Tabs, Link } from "expo-router";
-import { Pressable } from "react-native";
+import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../styles/theme";
 
@@ -117,6 +116,14 @@ export default function TabLayout() {
             <TabBarIcon
               name="list"
               color={color}
+            />
+          ),
+          headerRight: () => (
+            <Ionicons
+              name="list-outline"
+              size={24}
+              color={COLORS.primary}
+              style={{ marginRight: 15 }}
             />
           ),
         }}

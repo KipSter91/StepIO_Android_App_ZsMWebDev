@@ -294,13 +294,12 @@ const styles = StyleSheet.create({
   welcomeText: {
     fontSize: FONTS.sizes.xxl,
     color: COLORS.white,
-    fontWeight: "700",
-    fontFamily: FONTS.cyber?.fontFamily || "System",
+    fontFamily: FONTS.cyber.fontFamily,
   },
   welcomeSubtitle: {
-    fontSize: FONTS.sizes.md,
     color: COLORS.darkMuted,
     marginTop: SPACING.xs,
+    fontFamily: FONTS.regular.fontFamily
   },
 
   // Stats card

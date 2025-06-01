@@ -4,56 +4,98 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
+  Image,
 } from "react-native";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import useStepStore, { StepSession } from "../../src/store/useStepStore";
+import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
 
 export default function ActivitiesScreen() {
   const { sessions } = useStepStore();
 
   // Group sessions by date
   const groupedSessions = groupSessionsByDate(sessions);
-
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      {sessions.length > 0 ? (
-        <FlatList
-          data={Object.entries(groupedSessions)}
-          keyExtractor={(item) => item[0]}
-          renderItem={({ item: [date, daySessions] }) => (
-            <View style={styles.dateGroup}>
-              <Text style={styles.dateHeader}>{formatDateHeader(date)}</Text>
-              {daySessions.map((session) => (
-                <ActivityItem
-                  key={session.id}
-                  session={session}
-                  onPress={() => router.push(`/activities/${session.id}`)}
-                />
-              ))}
-            </View>
-          )}
-          contentContainerStyle={styles.listContent}
+
+      {/* Background with logo */}
+      <View style={styles.backgroundContainer}>
+        <Image
+          source={require("@/assets/images/stepio-background.png")}
+          style={styles.backgroundImage}
+          resizeMode="cover"
         />
+      </View>
+
+      {sessions.length > 0 ? (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Your Path Tracking History</Text>
+          </View>
+          {/* Activities List */}
+          {Object.entries(groupedSessions)
+            .sort(([dateA], [dateB]) => dateB.localeCompare(dateA)) // Sort dates in descending order
+            .map(([date, daySessions]) => (
+              <View
+                key={date}
+                style={styles.dateGroup}>
+                <Text style={styles.dateHeader}>{formatDateHeader(date)}</Text>
+                {daySessions.map((session) => (
+                  <ActivityItem
+                    key={session.id}
+                    session={session}
+                    onPress={() => {
+                      // For now, navigate to stats or a placeholder
+                      router.push("/(tabs)/stats");
+                    }}
+                  />
+                ))}
+              </View>
+            ))}
+        </ScrollView>
       ) : (
         <View style={styles.emptyContainer}>
-          <MaterialIcons
-            name="directions-walk"
-            size={64}
-            color="#ccc"
-          />
-          <Text style={styles.emptyTitle}>No Activities Yet</Text>
-          <Text style={styles.emptyMessage}>
-            Start tracking your walks and runs to see them here
-          </Text>
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={() => router.push("/path-tracking")}>
-            <Text style={styles.startButtonText}>Start Tracking</Text>
-          </TouchableOpacity>
+          <LinearGradient
+            colors={GRADIENTS.storyCard}
+            style={styles.emptyCard}>
+            <View style={styles.emptyIconContainer}>
+              <LinearGradient
+                colors={GRADIENTS.primaryToSecondary}
+                style={styles.emptyIconBackground}>
+                <Ionicons
+                  name="walk"
+                  size={48}
+                  color={COLORS.white}
+                />
+              </LinearGradient>
+            </View>
+            <Text style={styles.emptyTitle}>No Activities Yet</Text>
+            <Text style={styles.emptyMessage}>
+              Start tracking your walks and runs to see them here
+            </Text>
+            <TouchableOpacity
+              style={styles.startButton}
+              onPress={() => router.push("/(tabs)/path-tracking")}>
+              <LinearGradient
+                colors={GRADIENTS.primaryToSecondary}
+                style={styles.startButtonGradient}>
+                <Ionicons
+                  name="play"
+                  size={20}
+                  color={COLORS.white}
+                />
+                <Text style={styles.startButtonText}>Start Tracking</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
       )}
     </View>
@@ -73,47 +115,62 @@ function ActivityItem({
   const durationMins = Math.floor(durationMs / (1000 * 60));
 
   // Calculate distance based on steps (approx 0.8m per step)
-  const distanceKm = (session.steps * 0.0008).toFixed(2);
+  const distanceKm = (session.steps * 0.0008).toFixed(1);
 
   // Activity time
   const activityTime = new Date(session.startTime).toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
-    hour12: true,
+    hour12: false,
   });
 
   return (
     <TouchableOpacity
       style={styles.activityItem}
       onPress={onPress}>
-      <View style={styles.activityIcon}>
-        <MaterialIcons
-          name="directions-run"
-          size={24}
-          color="#fff"
-        />
-      </View>
-
-      <View style={styles.activityDetails}>
-        <Text style={styles.activityTime}>{activityTime}</Text>
-        <Text style={styles.activityStats}>
-          {durationMins} min • {session.steps.toLocaleString()} steps •{" "}
-          {distanceKm} km
-        </Text>
-      </View>
-
-      <MaterialIcons
-        name="chevron-right"
-        size={24}
-        color="#ccc"
-      />
+      <LinearGradient
+        colors={GRADIENTS.storyCard}
+        style={styles.activityCardGradient}>
+        <View style={styles.activityItemContent}>
+          <View style={styles.activityIcon}>
+            <LinearGradient
+              colors={GRADIENTS.primaryToSecondary}
+              style={styles.activityIconGradient}>
+              <Ionicons
+                name="walk"
+                size={24}
+                color={COLORS.white}
+              />
+            </LinearGradient>
+          </View>
+          <View style={styles.activityDetails}>
+            <Text style={styles.activityTime}>{activityTime}</Text>
+            <Text style={styles.activityStats}>
+              {durationMins} min • {session.steps.toLocaleString()} steps •{" "}
+              {distanceKm} km
+            </Text>
+          </View>
+          <View style={styles.activityChevron}>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={COLORS.darkMuted}
+            />
+          </View>
+        </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 }
 
 // Helper function to group sessions by date
 function groupSessionsByDate(sessions: StepSession[]) {
-  return sessions.reduce(
+  // First, sort sessions by startTime in descending order (newest first)
+  const sortedSessions = [...sessions].sort(
+    (a, b) => b.startTime - a.startTime
+  );
+
+  const groups = sortedSessions.reduce(
     (groups: { [key: string]: StepSession[] }, session) => {
       // Use local date to avoid timezone issues
       const sessionDate = new Date(session.startTime);
@@ -133,6 +190,13 @@ function groupSessionsByDate(sessions: StepSession[]) {
     },
     {}
   );
+
+  // Sort each date group by startTime in descending order (newest first within each day)
+  Object.keys(groups).forEach((date) => {
+    groups[date].sort((a, b) => b.startTime - a.startTime);
+  });
+
+  return groups;
 }
 
 // Helper function to format date header
@@ -163,78 +227,149 @@ function formatDateHeader(dateString: string): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.darkBackground,
   },
-  listContent: {
-    paddingVertical: 16,
+
+  // Background elements
+  backgroundContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backgroundImage: {
+    width: "100%",
+    height: "100%",
+    opacity: 0.6,
+  },
+
+  scrollContent: {
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+  },
+  header: {
+    marginBottom: SPACING.xl,
+  },
+  headerTitle: {
+    ...FONTS.bold,
+    fontSize: FONTS.sizes.xxl,
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
   },
   dateGroup: {
-    marginBottom: 24,
+    marginBottom: SPACING.xl,
   },
   dateHeader: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 12,
-    paddingHorizontal: 16,
+    ...FONTS.semibold,
+    fontSize: FONTS.sizes.lg,
+    color: COLORS.primary,
+    marginBottom: SPACING.md,
+    textTransform: "uppercase",
+    letterSpacing: 1.0,
   },
   activityItem: {
+    marginBottom: SPACING.md,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+  },
+  activityCardGradient: {
+    padding: SPACING.lg,
+  },
+  activityItemContent: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: "#fff",
   },
   activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#3498db",
-    alignItems: "center",
+    width: 48,
+    height: 48,
+    marginRight: SPACING.md,
+  },
+  activityIconGradient: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 24,
     justifyContent: "center",
-    marginRight: 16,
+    alignItems: "center",
   },
   activityDetails: {
     flex: 1,
   },
   activityTime: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 4,
+    fontSize: FONTS.sizes.md,
+    fontWeight: "600",
+    color: COLORS.white,
+    marginBottom: SPACING.xs,
   },
   activityStats: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.darkMuted,
+  },
+  activityChevron: {
+    width: 24,
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 32,
+    padding: SPACING.xl,
+  },
+  emptyCard: {
+    padding: SPACING.xl * 2,
+    borderRadius: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+    width: "100%",
+    maxWidth: 320,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    marginBottom: SPACING.lg,
+  },
+  emptyIconBackground: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 40,
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: FONTS.sizes.lg,
+    fontWeight: "700",
+    color: COLORS.white,
+    marginBottom: SPACING.sm,
+    textAlign: "center",
   },
   emptyMessage: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: FONTS.sizes.md,
+    color: COLORS.darkMuted,
     textAlign: "center",
-    marginBottom: 32,
+    marginBottom: SPACING.xl,
+    lineHeight: 22,
   },
   startButton: {
-    backgroundColor: "#3498db",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 50,
+    borderRadius: 16,
+    overflow: "hidden",
+    minWidth: 200,
+  },
+  startButtonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.sm,
   },
   startButtonText: {
-    color: "#fff",
-    fontSize: 16,
+    fontSize: FONTS.sizes.md,
     fontWeight: "600",
+    color: COLORS.white,
   },
 });

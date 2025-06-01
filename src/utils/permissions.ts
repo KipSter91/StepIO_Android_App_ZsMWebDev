@@ -29,15 +29,7 @@ export const requestAllPermissions = async (minimal = false) => {
           activityGranted = result === PermissionsAndroid.RESULTS.GRANTED;
         } else {
           const result = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
-            {
-              title: "Activity Recognition Permission",
-              message:
-                "StepIO needs activity recognition permission to count your steps.",
-              buttonNeutral: "Ask Me Later",
-              buttonNegative: "Cancel",
-              buttonPositive: "OK",
-            }
+            PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION
           );
           activityGranted = result === PermissionsAndroid.RESULTS.GRANTED;
         }

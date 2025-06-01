@@ -1,8 +1,5 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
-import {
-  DarkTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { DarkTheme, ThemeProvider } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
@@ -19,7 +16,6 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
   });
 
@@ -39,7 +35,6 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-
   return (
     <ThemeProvider value={DarkTheme}>
       <StatusBar
@@ -54,17 +49,16 @@ function RootLayoutNav() {
         />
         <Stack.Screen
           name="(onboarding)"
-          options={{ headerShown: false,}}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="(tabs)"
-          options={{ headerShown: false,}}
+          options={{ headerShown: false }}
         />
         <Stack.Screen
           name="modal"
           options={{ headerShown: false, presentation: "modal" }}
         />
-        <Stack.Screen name="+not-found" />
       </Stack>
     </ThemeProvider>
   );
