@@ -48,16 +48,12 @@ TaskManager.defineTask(
   LOCATION_TASK_NAME,
   async ({ data, error }: TaskManager.TaskManagerTaskBody<any>) => {
     if (error) {
-      console.error("[TaskManager] Location task error:", error);
+      // Error in location task
       return;
     }
     if (data && data.locations) {
       const { locations } = data;
-      console.log(
-        "[TaskManager] Background location update received:",
-        locations.length,
-        "locations"
-      );
+      // Background location update received
 
       // Get current store state
       const store = useStepStore.getState();
@@ -71,7 +67,7 @@ TaskManager.defineTask(
             isNaN(location.coords.longitude) ||
             (location.coords.accuracy && location.coords.accuracy > 100)
           ) {
-            console.log("[TaskManager] Skipping invalid background location");
+            // Skipping invalid background location
             continue;
           }
           const newCoord = {
@@ -79,13 +75,11 @@ TaskManager.defineTask(
             lon: location.coords.longitude,
             timestamp: location.timestamp,
           };
-
           // Check distance from last coordinate to avoid GPS noise
           const lastCoord =
             store.activeSession.coordinates?.[
               store.activeSession.coordinates.length - 1
             ];
-
           if (lastCoord) {
             const distance = calculateDistance(
               lastCoord.lat,
@@ -93,28 +87,18 @@ TaskManager.defineTask(
               newCoord.lat,
               newCoord.lon
             );
-            // Only add if moved at least 2 meters (for testing)
+            // Only add if moved at least 2 meters
             if (distance < 0.002) {
-              console.log(
-                "[TaskManager] Skipping coordinate - too close to previous one:",
-                distance * 1000,
-                "m"
-              );
               continue;
             }
           }
-
-          console.log("[TaskManager] Adding background coordinate:", newCoord);
-
           // Update the active session with new coordinate
           store.updateActiveSession({
             coordinates: [...(store.activeSession.coordinates || []), newCoord],
           });
         }
       } else {
-        console.log(
-          "[TaskManager] No active session, ignoring background location"
-        );
+        // No active session, ignoring background location
       }
     }
     return Promise.resolve();
@@ -244,22 +228,13 @@ export default function PathTrackingScreen() {
   // Step counter effect with background monitoring
   useEffect(() => {
     let backgroundStepInterval: ReturnType<typeof setInterval> | null = null;
-
     if (isTracking) {
-      console.log("[PathTracking] Starting step counter...");
-
-      // Initialize session with current step count as baseline
+      // Starting step counter
       const initializeSessionSteps = async () => {
         try {
           const currentSteps = await nativeStepCounterService.getTodaySteps();
-          console.log(
-            "[PathTracking] Initializing session with current steps:",
-            currentSteps
-          );
-
           setSessionStartSteps(currentSteps);
           setSessionSteps(0);
-
           // Update the active session with the baseline
           const currentState = useStepStore.getState();
           if (currentState.activeSession && currentState.isTracking) {
@@ -269,39 +244,23 @@ export default function PathTrackingScreen() {
             });
           }
         } catch (error) {
-          console.error(
-            "[PathTracking] Error initializing session steps:",
-            error
-          );
+          // Error initializing session steps
         }
-      }; // Create step update callback for real-time updates when app is active
+      };
+      // Create step update callback for real-time updates when app is active
       const handleStepUpdate = (
         steps: number,
         calories?: number,
         timestamp?: number
       ) => {
-        console.log("[PathTracking] Step update received:", {
-          steps,
-          calories,
-          timestamp,
-        });
-
-        // Get current sessionStartSteps from store instead of stale closure
+        // Step update received
         const currentState = useStepStore.getState();
         const currentStartSteps =
           currentState.activeSession?.sessionStartSteps || 0;
-
         if (currentStartSteps > 0) {
           // Calculate session steps
           const currentSessionSteps = Math.max(0, steps - currentStartSteps);
           setSessionSteps(currentSessionSteps);
-
-          console.log("[PathTracking] Session steps calculated:", {
-            totalSteps: steps,
-            startSteps: currentStartSteps,
-            sessionSteps: currentSessionSteps,
-          });
-
           // Update active session with step data
           if (currentState.activeSession && currentState.isTracking) {
             currentState.updateActiveSession({
@@ -311,49 +270,25 @@ export default function PathTrackingScreen() {
           }
         }
       };
-
-      // Store callback reference
       stepUpdateCallback.current = handleStepUpdate;
-
-      // Subscribe to step updates for real-time updates
       nativeStepCounterService.onStepUpdate(handleStepUpdate);
-
-      // Start step tracking
       nativeStepCounterService.startTracking();
-
-      // Background interval for step monitoring (works even when app is backgrounded)
       backgroundStepInterval = setInterval(async () => {
         try {
-          console.log("[PathTracking] Background step monitoring...");
-
-          // Get current store state
+          // Background step monitoring
           const currentState = useStepStore.getState();
-
           if (currentState.activeSession && currentState.isTracking) {
-            // Get current step count from native service
             const currentSteps = await nativeStepCounterService.getTodaySteps();
             const currentCalories =
               await nativeStepCounterService.getTodayCalories();
-
             const sessionStartSteps =
               currentState.activeSession.sessionStartSteps || 0;
-
             if (sessionStartSteps > 0) {
               const currentSessionSteps = Math.max(
                 0,
                 currentSteps - sessionStartSteps
               );
-
-              console.log("[PathTracking] Background session steps update:", {
-                currentSteps,
-                sessionStartSteps,
-                currentSessionSteps,
-              });
-
-              // Update local state
               setSessionSteps(currentSessionSteps);
-
-              // Update active session with step data
               currentState.updateActiveSession({
                 steps: currentSessionSteps,
                 calories: currentCalories,
@@ -361,50 +296,31 @@ export default function PathTrackingScreen() {
             }
           }
         } catch (error) {
-          console.error(
-            "[PathTracking] Error in background step monitoring:",
-            error
-          );
+          // Error in background step monitoring
         }
-      }, 1000); // Update every 1 second
-
-      // Initialize session baseline
+      }, 1000);
       initializeSessionSteps();
-
-      console.log(
-        "[PathTracking] Step tracking and background monitoring started"
-      );
     } else {
-      // Stop step counting
       if (stepUpdateCallback.current) {
         nativeStepCounterService.removeStepUpdateListener(
           stepUpdateCallback.current
         );
         stepUpdateCallback.current = null;
       }
-
-      // Clear background interval
       if (backgroundStepInterval) {
         clearInterval(backgroundStepInterval);
         backgroundStepInterval = null;
       }
-
-      // Reset step states
       setSessionSteps(0);
       setSessionStartSteps(0);
-
-      console.log("[PathTracking] Step tracking stopped");
     }
-
     return () => {
-      // Cleanup on dependency change or unmount
       if (stepUpdateCallback.current) {
         nativeStepCounterService.removeStepUpdateListener(
           stepUpdateCallback.current
         );
         stepUpdateCallback.current = null;
       }
-
       if (backgroundStepInterval) {
         clearInterval(backgroundStepInterval);
         backgroundStepInterval = null;
@@ -437,39 +353,27 @@ export default function PathTrackingScreen() {
   }, []); // Start location tracking
   const startLocationUpdates = async () => {
     try {
-      console.log("[PathTracking] Starting location updates...");
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.Highest,
-        timeInterval: 5000, // 5 seconds for testing
-        distanceInterval: 2, // minimum distance in meters (for testing)
+        timeInterval: 5000,
+        distanceInterval: 2,
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: "StepIO is tracking your path",
           notificationBody: "Keep the app open for best results",
         },
       });
-
-      console.log("[PathTracking] TaskManager location updates started");
-
-      // Subscribe to location updates with proper cleanup
       if (locationWatcherRef.current) {
         locationWatcherRef.current.remove();
       }
       locationWatcherRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Highest,
-          timeInterval: 5000, // 5 seconds for testing
-          distanceInterval: 2, // 2 meters for testing
+          timeInterval: 5000,
+          distanceInterval: 2,
         },
         (location) => {
-          console.log("[PathTracking] New location received:", {
-            lat: location.coords.latitude,
-            lon: location.coords.longitude,
-            timestamp: location.timestamp,
-            accuracy: location.coords.accuracy,
-          });
-
-          // Validate location data
+          // New location received
           if (
             !location.coords.latitude ||
             !location.coords.longitude ||
@@ -478,34 +382,25 @@ export default function PathTrackingScreen() {
             (location.coords.accuracy && location.coords.accuracy > 100)
           ) {
             // Skip locations with poor accuracy (>100m)
-            console.log(
-              "[PathTracking] Skipping invalid or inaccurate location"
-            );
             return;
           }
-
-          // Get current session from store to avoid stale closure
           const currentState = useStepStore.getState();
           const currentSession = currentState.activeSession;
-
           if (currentSession && currentState.isTracking) {
             const newCoord = {
               lat: location.coords.latitude,
               lon: location.coords.longitude,
               timestamp: location.timestamp,
             };
-
-            // Check if this coordinate is significantly different from the last one
             const lastCoord =
               currentSession.coordinates?.[
                 currentSession.coordinates.length - 1
               ];
-            const now = Date.now(); // Throttle updates to max once every 3 seconds for testing
+            const now = Date.now();
             if (now - lastLocationUpdateRef.current < 3000) {
-              console.log("[PathTracking] Throttling location update");
+              // Throttling location update
               return;
             }
-
             if (lastCoord) {
               const distance = calculateDistance(
                 lastCoord.lat,
@@ -513,45 +408,22 @@ export default function PathTrackingScreen() {
                 newCoord.lat,
                 newCoord.lon
               );
-
-              // Only add if moved at least 2 meters (for testing)
               if (distance < 0.002) {
-                // 2 meters in km
-                console.log(
-                  "[PathTracking] Skipping coordinate - too close to previous one:",
-                  distance * 1000,
-                  "m"
-                );
+                // Too close to previous coordinate
                 return;
               }
             }
-
             lastLocationUpdateRef.current = now;
-
-            console.log(
-              "[PathTracking] Adding coordinate to session:",
-              newCoord
-            );
-            console.log(
-              "[PathTracking] Current coordinates count:",
-              currentSession.coordinates?.length || 0
-            );
-
-            // Update active session with new coordinate
+            // Add coordinate to session
             currentState.updateActiveSession({
               coordinates: [...(currentSession.coordinates || []), newCoord],
             });
           } else {
-            console.log(
-              "[PathTracking] No active session or not tracking, ignoring location update"
-            );
+            // No active session or not tracking, ignoring location update
           }
         }
       );
-
-      console.log("[PathTracking] Location watcher started successfully");
     } catch (err) {
-      console.error("Failed to start location tracking", err);
       setErrorMsg("Failed to start location tracking");
     }
   };
@@ -559,27 +431,17 @@ export default function PathTrackingScreen() {
   const handleStartTracking = async () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      console.log("[PathTracking] Starting tracking...");
-
       // Reset throttling
       lastLocationUpdateRef.current = 0;
-
-      // Start tracking in our store
       startTracking();
-
-      // Start location updates
       await startLocationUpdates();
     } catch (error) {
-      console.error("Error starting tracking:", error);
       Alert.alert("Error", "Failed to start path tracking");
     }
   }; // Handle stop tracking button press
   const handleStopTracking = async () => {
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      console.log("[PathTracking] Stopping tracking...");
       // Get current session data before stopping
       const currentSession = activeSession;
       if (currentSession) {
@@ -588,57 +450,25 @@ export default function PathTrackingScreen() {
         const actualDistance = calculateTotalDistance(
           currentSession.coordinates || []
         );
-
-        console.log("=== SESSION COMPLETED ===");
-        console.log("Session ID:", currentSession.id);
-        console.log(
-          "Start Time:",
-          new Date(currentSession.startTime).toISOString()
-        );
-        console.log("End Time:", new Date().toISOString());
-        console.log("Duration (seconds):", sessionDuration);
-        console.log("Total Steps:", currentSession.steps);
-        console.log("Coordinates Count:", coordinatesCount);
-        console.log("Distance (calculated):", actualDistance.toFixed(3), "km");
-        console.log("=== COORDINATES DATA ===");
-
-        if (
-          currentSession.coordinates &&
-          currentSession.coordinates.length > 0
-        ) {
-          console.log("First coordinate:", currentSession.coordinates[0]);
-          console.log(
-            "Last coordinate:",
-            currentSession.coordinates[coordinatesCount - 1]
-          );
-          console.log(
-            "All coordinates:",
-            JSON.stringify(currentSession.coordinates, null, 2)
-          );
-        } else {
-          console.log("No coordinates collected during this session");
-        }
-
-        console.log("=== END SESSION DATA ===");
+        // Session completed and saved
+        // Session ID: currentSession.id
+        // Start Time: new Date(currentSession.startTime).toISOString()
+        // End Time: new Date().toISOString()
+        // Duration (seconds): sessionDuration
+        // Total Steps: currentSession.steps
+        // Coordinates Count: coordinatesCount
+        // Distance (calculated): actualDistance
+        // Coordinates data: currentSession.coordinates
       }
-
-      // Stop location watcher
       if (locationWatcherRef.current) {
         locationWatcherRef.current.remove();
         locationWatcherRef.current = null;
-        console.log("[PathTracking] Location watcher stopped");
       }
-
-      // Stop tracking in our store (this will also log the completed session)
       stopTracking();
-
-      // Stop location updates
       await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-      console.log("[PathTracking] TaskManager location updates stopped"); // NEW: shimmer and reinitialization
       setIsMapLoading(true);
       getUserLocation();
     } catch (error) {
-      console.error("Error stopping tracking:", error);
       Alert.alert("Error", "Failed to stop path tracking");
     }
   };
@@ -730,7 +560,7 @@ export default function PathTrackingScreen() {
                   <Text style={styles.statValue}>
                     {calculateTotalDistance(
                       activeSession?.coordinates || []
-                    ).toFixed(2)}{" "}
+                    ).toFixed(1)}{" "}
                     km
                   </Text>
                 </View>

@@ -244,15 +244,6 @@ class NativeStepCounterService {
     }
   }
 
-  // Simulate steps for testing (native debug only)
-  public async simulateSteps(steps: number): Promise<boolean> {
-    try {
-      return await NativeStepCounter.simulateSteps(steps);
-    } catch {
-      return false;
-    }
-  }
-
   // Register a callback for step updates
   public onStepUpdate(callback: StepUpdateCallback): void {
     if (
@@ -299,69 +290,10 @@ class NativeStepCounterService {
     Object.keys(timestampCache).forEach((key) => {
       delete timestampCache[key];
     });
-  } // Debug function to log today's JSON data
-  async logTodayJsonData(): Promise<void> {
-    try {
-      const today = new Date();
-      const todayString = `${today.getFullYear()}-${(today.getMonth() + 1)
-        .toString()
-        .padStart(2, "0")}-${today.getDate().toString().padStart(2, "0")}`;
-
-      console.log(`🔍 Current date object:`, today);
-      console.log(
-        `🔍 Today's timezone offset (minutes):`,
-        today.getTimezoneOffset()
-      );
-      console.log(`🔍 Today's ISO string:`, today.toISOString());
-      console.log(`🔍 Today's local date string:`, todayString);
-      console.log(`🔍 Fetching JSON data for today: ${todayString}`);
-
-      const jsonData = await NativeStepCounter.getStepTimestampsForDate(
-        todayString
-      );
-      console.log(
-        `📊 Raw JSON data from native:`,
-        JSON.stringify(jsonData, null, 2)
-      );
-
-      // Also log the parsed timestamps
-      const timestamps = await this.getStepTimestampsForDate(todayString);
-      console.log(`📈 Parsed timestamps for ${todayString}:`, timestamps);
-
-      // Analyze timestamp timezone info
-      if (timestamps.length > 0) {
-        const firstTimestamp = timestamps[0];
-        const timestampDate = new Date(firstTimestamp.timestamp);
-        console.log(`🕐 First timestamp analysis:`);
-        console.log(`  - Raw timestamp: ${firstTimestamp.timestamp}`);
-        console.log(`  - As Date object: ${timestampDate}`);
-        console.log(`  - UTC string: ${timestampDate.toISOString()}`);
-        console.log(`  - Local string: ${timestampDate.toLocaleString()}`);
-        console.log(`  - Hour (local): ${timestampDate.getHours()}`);
-        console.log(`  - Hour (UTC): ${timestampDate.getUTCHours()}`);
-      }
-
-      // Log hourly breakdown
-      const hourlySteps = await this.getHourlyStepsForDate(today);
-      console.log(`⏰ Hourly steps for ${todayString}:`, hourlySteps);
-
-      // Log today's totals
-      const todaySteps = await this.getTodaySteps();
-      const todayCalories = await this.getTodayCalories();
-      console.log(
-        `🏃 Today's totals - Steps: ${todaySteps}, Calories: ${todayCalories}`
-      );
-    } catch (error) {
-      console.error("❌ Error logging today's JSON data:", error);
-    }
   }
 }
 
 export const nativeStepCounterService = new NativeStepCounterService();
-
-// Közvetlen export a debug funkcióhoz:
-export const logTodayJsonData = () =>
-  nativeStepCounterService.logTodayJsonData();
 
 // Automatically manage subscriptions on app state changes
 AppState.addEventListener("change", (nextAppState) => {

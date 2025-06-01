@@ -291,14 +291,6 @@ export default function StatsScreen() {
       59
     );
 
-    console.log(`🕐 Initializing with today's date:`, today);
-    console.log(`🕐 Today's ISO string:`, today.toISOString());
-    console.log(`🕐 Today's date string:`, today.toISOString().split("T")[0]);
-    console.log(`🕐 Today local:`, todayLocal);
-    console.log(`🕐 Today local ISO:`, todayLocal.toISOString());
-    console.log(`🕐 Today end local:`, todayEndLocal);
-    console.log(`🕐 Today end local ISO:`, todayEndLocal.toISOString());
-
     return {
       from: todayLocal,
       to: todayEndLocal,
@@ -307,10 +299,6 @@ export default function StatsScreen() {
   }); // Check if we have a selected range from the calendar modal
   useEffect(() => {
     if (selectedRange.from && selectedRange.to) {
-      console.log("📅 Processing selected range from calendar modal:");
-      console.log("📅 selectedRange.from:", selectedRange.from);
-      console.log("📅 selectedRange.to:", selectedRange.to);
-
       // Convert string dates back to Date objects if needed
       const fromDate =
         selectedRange.from instanceof Date
@@ -321,14 +309,8 @@ export default function StatsScreen() {
           ? selectedRange.to
           : new Date(selectedRange.to);
 
-      console.log("📅 Converted fromDate:", fromDate);
-      console.log("📅 Converted fromDate ISO:", fromDate.toISOString());
-      console.log("📅 Converted toDate:", toDate);
-      console.log("📅 Converted toDate ISO:", toDate.toISOString());
-
       // Check if dates are valid
       if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-        console.log("📅 Invalid dates detected, skipping...");
         return;
       }
 
@@ -417,7 +399,6 @@ export default function StatsScreen() {
       // Prevent loading data for future dates
       const today = new Date();
       if (range.from > today) {
-        console.log("Selected date is in the future, not loading data");
         setStatsData({
           totalSteps: 0,
           totalCalories: 0,
@@ -439,11 +420,6 @@ export default function StatsScreen() {
           .getDate()
           .toString()
           .padStart(2, "0")}`;
-        console.log(`🔍 Loading day data for: ${dateString}`);
-        console.log(`🔍 Selected date:`, selectedDate);
-        console.log(`🔍 Today's date:`, new Date());
-        console.log(`🔍 Date range:`, range);
-
         const [timestamps, hourlyStepsRaw] = await Promise.all([
           nativeStepCounterService.getStepTimestampsForDate(dateString),
           nativeStepCounterService.getHourlyStepsForDate(selectedDate),
@@ -462,7 +438,6 @@ export default function StatsScreen() {
             hourlySteps[hour.toString()] =
               (hourlySteps[hour.toString()] || 0) + t.steps;
           });
-          console.log("📊 Built hourlySteps from timestamps:", hourlySteps);
         }
 
         const totalSteps = timestamps.reduce(
@@ -483,14 +458,6 @@ export default function StatsScreen() {
           totalDistance,
           hourlySteps,
           activeDays: activeHours, // For day view, this represents active hours
-        });
-
-        console.log(`📊 Day stats set:`, {
-          totalSteps,
-          totalCalories: Math.round(totalCalories),
-          totalDistance,
-          hourlySteps,
-          activeDays: activeHours,
         });
       } else {
         // For other periods, collect data from multiple dates using unified approach
@@ -534,17 +501,9 @@ export default function StatsScreen() {
           activeDays,
         }); // Store period data for chart
         setPeriodChartData(periodData);
-
-        console.log(`📊 Period stats set:`, {
-          totalSteps,
-          totalCalories: Math.round(totalCalories),
-          totalDistance,
-          activeDays,
-          periodData,
-        });
       }
     } catch (error) {
-      console.error("Error loading stats data:", error);
+      // Hiba esetén ne logoljunk, csak némán ne frissítsen
     }
   };
   const onRefresh = async () => {
@@ -559,66 +518,40 @@ export default function StatsScreen() {
   };
   useEffect(() => {
     loadStatsData(dateRange);
-
-    // Subscribe to step updates (only for current day)
     const stepUpdateHandler = () => {
       if (dateRange.type === "day") {
         loadStatsData(dateRange);
       }
     };
-
     nativeStepCounterService.onStepUpdate(stepUpdateHandler);
-
     return () => {
       nativeStepCounterService.removeStepUpdateListener(stepUpdateHandler);
     };
-  }, [dateRange, sessions]); // Add sessions dependency  // Generate chart data for different periods
+  }, [dateRange, sessions]);
+  // Generate chart data for different periods
   const getChartDataForPeriod = () => {
-    console.log(
-      `🔍 getChartDataForPeriod called for dateRange.type:`,
-      dateRange.type
-    );
-    console.log(`🔍 Current statsData:`, statsData);
-
     if (dateRange.type === "day") {
       // For day view, return hourly data
       const hourlyData = Array.from(
         { length: 24 },
         (_, index) => statsData.hourlySteps[index.toString()] || 0
       );
-      console.log(`📊 Day chart data:`, hourlyData);
-      console.log(`📊 Hourly steps data:`, statsData.hourlySteps);
-      console.log(
-        `📊 Each hour breakdown:`,
-        Array.from({ length: 24 }, (_, index) => ({
-          hour: index,
-          steps: statsData.hourlySteps[index.toString()] || 0,
-        }))
-      );
       return hourlyData;
     }
-
-    // For other periods, use the period chart data from native service
     switch (dateRange.type) {
       case "week": {
-        // Group by day of week (Monday = 0)
         const weekData = Array(7).fill(0);
         const dateArray = generateDateArray(dateRange);
         dateArray.forEach((date) => {
-          const dayOfWeek = (date.getDay() + 6) % 7; // Monday = 0
-          // Use local date string for key
+          const dayOfWeek = (date.getDay() + 6) % 7;
           const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1)
             .toString()
             .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
           weekData[dayOfWeek] += periodChartData[dateKey] || 0;
         });
-
-        console.log(`📊 Week chart data:`, weekData);
-        console.log(`📊 Period chart data:`, periodChartData);
         return weekData;
       }
       case "month": {
-        // For month view, show daily breakdown (1-31 days)
         const daysInMonth = new Date(
           dateRange.from.getFullYear(),
           dateRange.from.getMonth() + 1,
@@ -628,12 +561,9 @@ export default function StatsScreen() {
         const dateArray = generateDateArray(dateRange);
         const today = new Date();
         today.setHours(23, 59, 59, 999);
-
         dateArray.forEach((date) => {
-          // Only include data for dates up to today
           if (date <= today) {
-            const dayOfMonth = date.getDate() - 1; // 0-based index
-            // Use local date string for key
+            const dayOfMonth = date.getDate() - 1;
             const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1)
               .toString()
               .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
@@ -642,26 +572,18 @@ export default function StatsScreen() {
             }
           }
         });
-
-        console.log(`📊 Month chart data:`, monthData);
-        console.log(`📊 Period chart data:`, periodChartData);
         return monthData;
       }
       case "year": {
-        // For year view, show monthly breakdown (Jan-Dec)
         const yearData = Array(12).fill(0);
         const dateArray = generateDateArray(dateRange);
         dateArray.forEach((date) => {
           const month = date.getMonth();
-          // Use local date string for key
           const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1)
             .toString()
             .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
           yearData[month] += periodChartData[dateKey] || 0;
         });
-
-        console.log(`📊 Year chart data:`, yearData);
-        console.log(`📊 Period chart data:`, periodChartData);
         return yearData;
       }
       default:
@@ -759,22 +681,6 @@ export default function StatsScreen() {
             </View>
             <View style={styles.headerButtons}>
               <TouchableOpacity
-                style={styles.debugButton}
-                onPress={async () => {
-                  console.log("🔍 Debug button pressed - logging JSON data...");
-                  await nativeStepCounterService.logTodayJsonData();
-                }}>
-                <LinearGradient
-                  colors={[COLORS.secondary, COLORS.primary]}
-                  style={styles.calendarButtonGradient}>
-                  <Ionicons
-                    name="bug"
-                    size={20}
-                    color={COLORS.white}
-                  />
-                </LinearGradient>
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={styles.calendarButton}
                 onPress={() => router.push("/modal")}>
                 <LinearGradient
@@ -801,7 +707,7 @@ export default function StatsScreen() {
             />
             <StatCard
               title="Distance"
-              value={`${statsData.totalDistance.toFixed(2)} km`}
+              value={`${statsData.totalDistance.toFixed(1)} km`}
               icon="map"
               subtitle="traveled"
             />
@@ -999,14 +905,6 @@ const styles = StyleSheet.create({
   },
   headerButtons: {
     flexDirection: "row",
-    alignItems: "center",
-  },
-  debugButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginLeft: SPACING.md,
-    justifyContent: "center",
     alignItems: "center",
   },
 });

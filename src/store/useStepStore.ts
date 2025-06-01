@@ -96,26 +96,11 @@ export const useStepStore = create<StepStore>()(
       updateActiveSession: (data) => {
         set((state) => {
           if (!state.activeSession) {
-            console.log(
-              "[Store] Warning: Trying to update non-existent active session"
-            );
+            // Warning: Trying to update non-existent active session
             return state;
           }
-
           const updatedSession = { ...state.activeSession, ...data };
-
-          // Log coordinate updates
-          if (data.coordinates) {
-            console.log(
-              "[Store] Updated session coordinates. Total count:",
-              data.coordinates.length
-            );
-            if (data.coordinates.length > 0) {
-              const lastCoord = data.coordinates[data.coordinates.length - 1];
-              console.log("[Store] Latest coordinate:", lastCoord);
-            }
-          }
-
+          // Coordinate updates handled here if needed
           return {
             activeSession: updatedSession,
           };
@@ -132,14 +117,6 @@ export const useStepStore = create<StepStore>()(
           coordinates: [],
           steps: 0,
         };
-
-        console.log("[Store] Starting new tracking session:");
-        console.log("- Session ID:", newSession.id);
-        console.log(
-          "- Start Time:",
-          new Date(newSession.startTime).toISOString()
-        );
-
         set(() => ({
           activeSession: newSession,
           isTracking: true,
@@ -147,7 +124,6 @@ export const useStepStore = create<StepStore>()(
       },
       stopTracking: () => {
         const activeSession = get().activeSession;
-
         if (activeSession) {
           // Calculate distance from coordinates
           const calculateDistance = (
@@ -168,12 +144,10 @@ export const useStepStore = create<StepStore>()(
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c;
           };
-
           const calculateTotalDistance = (
             coordinates: { lat: number; lon: number; timestamp: number }[]
           ): number => {
             if (!coordinates || coordinates.length < 2) return 0;
-
             let totalDistance = 0;
             for (let i = 1; i < coordinates.length; i++) {
               const prev = coordinates[i - 1];
@@ -185,67 +159,21 @@ export const useStepStore = create<StepStore>()(
                 curr.lon
               );
             }
-
             return totalDistance;
           };
-
           const calculatedDistance = calculateTotalDistance(
             activeSession.coordinates || []
           );
-
           const completedSession: StepSession = {
             ...activeSession,
             endTime: Date.now(),
             distance: calculatedDistance,
           };
-
-          console.log("[Store] Session completed and saved:");
-          console.log("- Session ID:", completedSession.id);
-          console.log(
-            "- Start Time:",
-            new Date(completedSession.startTime).toISOString()
-          );
-          console.log(
-            "- End Time:",
-            new Date(completedSession.endTime!).toISOString()
-          );
-          console.log(
-            "- Duration:",
-            (
-              (completedSession.endTime! - completedSession.startTime) /
-              1000
-            ).toFixed(2),
-            "seconds"
-          );
-          console.log("- Steps:", completedSession.steps);
-          console.log("- Distance:", calculatedDistance.toFixed(3), "km");
-          console.log(
-            "- Coordinates collected:",
-            completedSession.coordinates?.length || 0
-          );
-
-          if (
-            completedSession.coordinates &&
-            completedSession.coordinates.length > 0
-          ) {
-            console.log("- First coordinate:", completedSession.coordinates[0]);
-            console.log(
-              "- Last coordinate:",
-              completedSession.coordinates[
-                completedSession.coordinates.length - 1
-              ]
-            );
-          }
-
           set((state) => ({
             sessions: [...state.sessions, completedSession],
             activeSession: null,
             isTracking: false,
           }));
-
-          console.log("[Store] Total sessions saved:", get().sessions.length);
-        } else {
-          console.log("[Store] No active session to stop");
         }
       },
 
@@ -267,18 +195,6 @@ export const useStepStore = create<StepStore>()(
         set(() => ({ chartMode: mode }));
       },
       setDateRange: (from, to) => {
-        console.log("🏪 Store setDateRange called with:");
-        console.log("🏪 From:", from);
-        console.log(
-          "🏪 From ISO:",
-          from instanceof Date ? from.toISOString() : "Not a Date"
-        );
-        console.log("🏪 To:", to);
-        console.log(
-          "🏪 To ISO:",
-          to instanceof Date ? to.toISOString() : "Not a Date"
-        );
-
         set(() => ({
           selectedRange: { from, to },
         }));
@@ -293,7 +209,7 @@ export const useStepStore = create<StepStore>()(
             isAppReady: status.isInitialized,
           }));
         } catch (error) {
-          console.error("[Store] App initialization failed:", error);
+          // App initialization failed
           set(() => ({
             initializationStatus: {
               isInitialized: false,

@@ -84,41 +84,21 @@ export default function CalendarScreen() {
 
   // Next/Previous month navigation
   const goToNextMonth = () => {
-    console.log(
-      "goToNextMonth - current:",
-      currentDate.getMonth(),
-      currentDate.getFullYear()
-    );
     // Create new date at the first day of next month to avoid day overflow issues
     const nextMonth = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth() + 1,
       1
     );
-    console.log(
-      "goToNextMonth - next:",
-      nextMonth.getMonth(),
-      nextMonth.getFullYear()
-    );
     setCurrentDate(nextMonth);
   };
 
   const goToPrevMonth = () => {
-    console.log(
-      "goToPrevMonth - current:",
-      currentDate.getMonth(),
-      currentDate.getFullYear()
-    );
     // Create new date at the first day of previous month to avoid day overflow issues
     const prevMonth = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth() - 1,
       1
-    );
-    console.log(
-      "goToPrevMonth - prev:",
-      prevMonth.getMonth(),
-      prevMonth.getFullYear()
     );
     setCurrentDate(prevMonth);
   };
@@ -147,16 +127,15 @@ export default function CalendarScreen() {
     );
 
     if (localDay > todayLocal) {
-      console.log("Cannot select future date:", localDay.toDateString());
       return;
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Ha nem az aktuális hónap napja, de van kiválasztott start date, próbáljuk meg range-ként kezelni
+    // If the day is not in the current month but there is a selected start date, try to handle as range
     if (!isCurrentMonth(day)) {
       if (selectedStartDate && !selectedEndDate) {
-        // Van start date, ez lehet end date - nem navigálunk, hanem beállítjuk a range-et
+        // There is a start date, this can be the end date - do not navigate, just set the range
         if (selectedStartDate > localDay) {
           setSelectedEndDate(selectedStartDate);
           setSelectedStartDate(localDay);
@@ -165,21 +144,21 @@ export default function CalendarScreen() {
         }
         return;
       } else {
-        // Nincs start date vagy már van end date - navigálunk és új kiválasztást kezdünk
+        // No start date or already have end date - navigate and start new selection
         setCurrentDate(new Date(day.getFullYear(), day.getMonth(), 1));
         setPendingDay(localDay);
         return;
       }
     }
 
-    // Ha nincs start date vagy már van end date, új kijelölés kezdése
+    // If no start date or already have end date, start new selection
     if (!selectedStartDate || selectedEndDate) {
       setSelectedStartDate(localDay);
       setSelectedEndDate(null);
       return;
     }
 
-    // Ha a start date későbbi, mint a most kiválasztott nap, swap
+    // If the start date is after the selected day, swap
     if (selectedStartDate > localDay) {
       setSelectedEndDate(selectedStartDate);
       setSelectedStartDate(localDay);
@@ -249,29 +228,13 @@ export default function CalendarScreen() {
   // Apply the selected range and navigate back
   const applyDateRange = () => {
     if (selectedStartDate) {
-      console.log("📅 Applying date range:");
-      console.log("📅 Selected start date:", selectedStartDate);
-      console.log(
-        "📅 Selected start date ISO:",
-        selectedStartDate.toISOString()
-      );
-      console.log(
-        "📅 Selected end date:",
-        selectedEndDate || selectedStartDate
-      );
-      console.log(
-        "📅 Selected end date ISO:",
-        (selectedEndDate || selectedStartDate).toISOString()
-      );
-
       setDateRange(selectedStartDate, selectedEndDate || selectedStartDate);
-
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     }
   };
 
-  // Adjunk hozzá egy useEffect-et, ami a currentDate változásakor feldolgozza a pendingDay-t
+  // Add a useEffect that processes pendingDay when currentDate changes
   React.useEffect(() => {
     if (pendingDay && isCurrentMonth(pendingDay)) {
       // Create local date to avoid timezone issues
@@ -281,12 +244,12 @@ export default function CalendarScreen() {
         pendingDay.getDate()
       );
 
-      // Ha nincs start date vagy már van end date, új kiválasztást kezdünk
+      // If no start date or already have end date, start new selection
       if (!selectedStartDate || selectedEndDate) {
         setSelectedStartDate(localPendingDay);
         setSelectedEndDate(null);
       } else {
-        // Van start date, ez lesz az end date
+        // There is a start date, this will be the end date
         if (selectedStartDate > localPendingDay) {
           setSelectedEndDate(selectedStartDate);
           setSelectedStartDate(localPendingDay);
@@ -363,7 +326,7 @@ export default function CalendarScreen() {
               today.setHours(23, 59, 59, 999);
               const isFuture = day && day > today;
 
-              // Új: tartományban van-e a nap (de nem start/end)
+              // New: is the day in the selected range (but not start/end)
               let isInRange = false;
               if (
                 day &&
@@ -383,7 +346,7 @@ export default function CalendarScreen() {
                     !day && styles.emptyCell,
                     isDaySelected(day) && styles.selectedDay,
                     isDayEdge(day) && styles.edgeDay,
-                    isInRange && styles.inRangeDay, // Új: tartomány napjai
+                    isInRange && styles.inRangeDay, // New: tartomány napjai
                     day && !isCurrentMonth(day) && styles.adjacentMonthDay,
                     isFuture && styles.futureDay,
                   ]}
@@ -609,9 +572,9 @@ const styles = StyleSheet.create({
   disabledButton: {
     opacity: 0.5,
   },
-  // Új stílus: inRangeDay (kijelölt tartomány napjai)
+  // New style: inRangeDay (days in the selected range)
   inRangeDay: {
-    backgroundColor: `${COLORS.primary}20`, // halvány primary szín
+    backgroundColor: `${COLORS.primary}20`, // faint primary color
     borderRadius: 16,
   },
 });

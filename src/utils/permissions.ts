@@ -57,16 +57,6 @@ export const requestAllPermissions = async (minimal = false) => {
           notifReq.status === "granted" || notifReq.granted === true;
       }
     }
-
-    // Log results
-    console.log(
-      "[Permissions] Location:",
-      locationGranted,
-      "Activity:",
-      activityGranted,
-      "Notification:",
-      notificationGranted
-    );
     return locationGranted && activityGranted && notificationGranted;
   } catch (e) {
     console.warn("[Permissions] Error requesting permissions:", e);
