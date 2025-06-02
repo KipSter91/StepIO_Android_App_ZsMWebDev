@@ -13,6 +13,7 @@ export interface StepSession {
   coordinates: { lat: number; lon: number; timestamp: number }[];
   steps: number;
   sessionStartSteps?: number; // Baseline steps at session start
+  sessionStartCalories?: number; // Baseline calories at session start
   distance?: number;
   calories?: number;
 }

@@ -114,8 +114,11 @@ function ActivityItem({
   const durationMs = (session.endTime || Date.now()) - session.startTime;
   const durationMins = Math.floor(durationMs / (1000 * 60));
 
-  // Calculate distance based on steps (approx 0.8m per step)
-  const distanceKm = (session.steps * 0.0008).toFixed(1);
+  // Use saved distance if available, otherwise estimate from steps
+  const distanceKm =
+    typeof session.distance === "number"
+      ? session.distance.toFixed(1)
+      : (session.steps * 0.0008).toFixed(1);
 
   // Activity time
   const activityTime = new Date(session.startTime).toLocaleTimeString("en-US", {

@@ -233,6 +233,8 @@ export default function PathTrackingScreen() {
       const initializeSessionSteps = async () => {
         try {
           const currentSteps = await nativeStepCounterService.getTodaySteps();
+          const currentCalories =
+            await nativeStepCounterService.getTodayCalories();
           setSessionStartSteps(currentSteps);
           setSessionSteps(0);
           // Update the active session with the baseline
@@ -240,7 +242,9 @@ export default function PathTrackingScreen() {
           if (currentState.activeSession && currentState.isTracking) {
             currentState.updateActiveSession({
               sessionStartSteps: currentSteps,
+              sessionStartCalories: currentCalories,
               steps: 0,
+              calories: 0,
             });
           }
         } catch (error) {
@@ -257,15 +261,21 @@ export default function PathTrackingScreen() {
         const currentState = useStepStore.getState();
         const currentStartSteps =
           currentState.activeSession?.sessionStartSteps || 0;
+        const currentStartCalories =
+          currentState.activeSession?.sessionStartCalories || 0;
         if (currentStartSteps > 0) {
           // Calculate session steps
           const currentSessionSteps = Math.max(0, steps - currentStartSteps);
+          // Calculate session calories (if calories provided, otherwise estimate from steps)
+          const currentSessionCalories = calories
+            ? Math.max(0, calories - currentStartCalories)
+            : currentSessionSteps * 0.04;
           setSessionSteps(currentSessionSteps);
           // Update active session with step data
           if (currentState.activeSession && currentState.isTracking) {
             currentState.updateActiveSession({
               steps: currentSessionSteps,
-              calories: calories || 0,
+              calories: currentSessionCalories,
             });
           }
         }
@@ -283,15 +293,21 @@ export default function PathTrackingScreen() {
               await nativeStepCounterService.getTodayCalories();
             const sessionStartSteps =
               currentState.activeSession.sessionStartSteps || 0;
+            const sessionStartCalories =
+              currentState.activeSession.sessionStartCalories || 0;
             if (sessionStartSteps > 0) {
               const currentSessionSteps = Math.max(
                 0,
                 currentSteps - sessionStartSteps
               );
+              const currentSessionCalories = Math.max(
+                0,
+                currentCalories - sessionStartCalories
+              );
               setSessionSteps(currentSessionSteps);
               currentState.updateActiveSession({
                 steps: currentSessionSteps,
-                calories: currentCalories,
+                calories: currentSessionCalories,
               });
             }
           }
@@ -450,15 +466,8 @@ export default function PathTrackingScreen() {
         const actualDistance = calculateTotalDistance(
           currentSession.coordinates || []
         );
-        // Session completed and saved
-        // Session ID: currentSession.id
-        // Start Time: new Date(currentSession.startTime).toISOString()
-        // End Time: new Date().toISOString()
-        // Duration (seconds): sessionDuration
-        // Total Steps: currentSession.steps
-        // Coordinates Count: coordinatesCount
-        // Distance (calculated): actualDistance
-        // Coordinates data: currentSession.coordinates
+        // Save the calculated distance to the session before stopping
+        updateActiveSession({ distance: actualDistance });
       }
       if (locationWatcherRef.current) {
         locationWatcherRef.current.remove();
