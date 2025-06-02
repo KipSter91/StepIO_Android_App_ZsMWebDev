@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Alert,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -14,12 +15,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import useStepStore from "../src/store/useStepStore";
 import { COLORS, SPACING, GRADIENTS } from "../styles/theme";
+import TrackedMap from "../components/TrackedMap";
 
 const { width } = Dimensions.get("window");
 
 export default function ActivityDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getSessionById } = useStepStore();
+  const { getSessionById, deleteSession } = useStepStore();
 
   // Get the specific session by ID
   const session = getSessionById(id as string);
@@ -89,7 +91,6 @@ export default function ActivityDetailsScreen() {
     // Rough estimation: 0.04 calories per step
     return Math.round(session.steps * 0.04);
   };
-
   const calculateAveragePace = () => {
     if (!session.endTime) return "N/A";
 
@@ -103,6 +104,27 @@ export default function ActivityDetailsScreen() {
     const seconds = Math.round((paceMinutes - minutes) * 60);
 
     return `${minutes}:${seconds.toString().padStart(2, "0")} min/km`;
+  };
+
+  const handleDeleteActivity = () => {
+    Alert.alert(
+      "Delete Activity",
+      "Are you sure you want to delete this activity? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteSession(id as string);
+            router.back();
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -146,6 +168,27 @@ export default function ActivityDetailsScreen() {
             </View>
           </LinearGradient>
         </View>
+        {/* Map Preview Card (if coordinates available) */}
+        {session.coordinates.length > 0 && (
+          <View style={styles.mapCard}>
+            <LinearGradient
+              colors={GRADIENTS.storyCard}
+              style={styles.mapCardGradient}>
+              <Text style={styles.sectionTitle}>Route Overview</Text>
+              <View style={styles.mapContainer}>
+                <TrackedMap
+                  coordinates={session.coordinates}
+                  autoCenter={true}
+                  readOnly={true}
+                  startMarker={true}
+                  endMarker={true}
+                  followUser={false}
+                  isTrackingActive={false}
+                />
+              </View>
+            </LinearGradient>
+          </View>
+        )}
         {/* Main Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
@@ -248,29 +291,6 @@ export default function ActivityDetailsScreen() {
             </View>
           </LinearGradient>
         </View>
-        {/* Map Preview Card (if coordinates available) */}
-        {session.coordinates.length > 0 && (
-          <View style={styles.mapCard}>
-            <LinearGradient
-              colors={GRADIENTS.storyCard}
-              style={styles.mapCardGradient}>
-              <Text style={styles.sectionTitle}>Route Overview</Text>
-              <View style={styles.mapPlaceholder}>
-                <Ionicons
-                  name="map"
-                  size={48}
-                  color={COLORS.darkMuted}
-                />
-                <Text style={styles.mapPlaceholderText}>
-                  Map view would show your route here
-                </Text>
-                <Text style={styles.mapPlaceholderSubtext}>
-                  {session.coordinates.length} GPS points recorded
-                </Text>
-              </View>
-            </LinearGradient>
-          </View>
-        )}
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.actionButton}>
@@ -286,6 +306,21 @@ export default function ActivityDetailsScreen() {
               />
               <Text style={styles.actionButtonText}>Share Activity</Text>
             </LinearGradient>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleDeleteActivity}>
+            <View style={styles.actionButtonSecondary}>
+              <Ionicons
+                name="trash"
+                size={20}
+                color={COLORS.danger}
+              />
+              <Text style={styles.actionButtonSecondaryText}>
+                Delete Activity
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -464,25 +499,20 @@ const styles = StyleSheet.create({
   mapCardGradient: {
     padding: SPACING.lg,
   },
-  mapPlaceholder: {
-    height: 200,
-    backgroundColor: COLORS.darkBackground,
+  mapContainer: {
+    height: 350,
     borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: COLORS.darkBorder,
   },
-  mapPlaceholderText: {
-    fontSize: 16,
-    color: COLORS.darkMuted,
+  mapStats: {
     marginTop: SPACING.md,
-    textAlign: "center",
+    alignItems: "center",
   },
-  mapPlaceholderSubtext: {
+  mapStatsText: {
     fontSize: 14,
     color: COLORS.darkMuted,
-    marginTop: SPACING.xs,
     opacity: 0.7,
   },
   actionButtons: {
@@ -515,11 +545,12 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     backgroundColor: COLORS.darkCard,
     borderWidth: 1,
-    borderColor: COLORS.accent,
+    borderColor: COLORS.danger,
+    borderRadius: 12,
   },
   actionButtonSecondaryText: {
     fontSize: 16,
     fontWeight: "600",
-    color: COLORS.accent,
+    color: COLORS.danger,
   },
 });

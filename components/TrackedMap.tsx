@@ -1,12 +1,12 @@
 import React, { useEffect, useRef } from "react";
-import { RootTagContext, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import MapView, {
   Marker,
   Polyline,
+  Circle,
   PROVIDER_GOOGLE,
   Region,
 } from "react-native-maps";
-import { MaterialIcons } from "@expo/vector-icons";
 import { COLORS } from "../styles/theme";
 
 // Custom dark map style for cyberpunk aesthetic
@@ -199,23 +199,60 @@ const TrackedMap = ({
   isTrackingActive = false,
 }: TrackedMapProps) => {
   const mapRef = useRef<MapView>(null);
-
+  const hasCenteredRef = useRef(false);
   // Format coordinates for react-native-maps
   const formattedCoordinates = coordinates.map((coord) => ({
     latitude: coord.lat,
     longitude: coord.lon,
   }));
 
+  // Function to center the map on coordinates
+  const centerMapOnCoordinates = () => {
+    if (
+      !mapRef.current ||
+      coordinates.length === 0 ||
+      (readOnly && hasCenteredRef.current)
+    )
+      return;
+
+    // Always use fitToCoordinates for better native map handling
+    if (formattedCoordinates.length > 0) {
+      mapRef.current.fitToCoordinates(formattedCoordinates, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: !readOnly, // Disable animation for readOnly mode to prevent shaking
+      });
+
+      if (readOnly) {
+        hasCenteredRef.current = true;
+      }
+    }
+  };
   // Auto center map on coordinates if there are any
   useEffect(() => {
-    if (!autoCenter || coordinates.length === 0 || !mapRef.current) return;
+    if (!autoCenter || coordinates.length === 0) return;
 
-    // Fit to coordinates
-    mapRef.current.fitToCoordinates(formattedCoordinates, {
-      edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-      animated: true,
-    });
-  }, [autoCenter, coordinates, formattedCoordinates]);
+    // For readOnly mode (activity details), only center once when coordinates are first loaded
+    if (readOnly) {
+      const timer = setTimeout(() => {
+        centerMapOnCoordinates();
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+
+    // For live tracking mode, center on coordinate changes
+    const timer = setTimeout(() => {
+      centerMapOnCoordinates();
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [autoCenter, readOnly ? coordinates.length > 0 : coordinates]);
+  // Additional effect to handle map ready state - only for initial load
+  useEffect(() => {
+    if (readOnly) {
+      // Reset centering flag when coordinates change in readOnly mode
+      hasCenteredRef.current = false;
+    }
+  }, [coordinates.length, readOnly]);
   return (
     <View style={styles.container}>
       <MapView
@@ -229,43 +266,41 @@ const TrackedMap = ({
         showsMyLocationButton={!readOnly && !isTrackingActive}
         showsBuildings={false}
         showsIndoors={false}
+        onMapReady={() => {
+          if (autoCenter && coordinates.length > 0 && readOnly) {
+            setTimeout(() => {
+              centerMapOnCoordinates();
+            }, 300);
+          }
+        }}
         mapPadding={{ top: 0, right: 0, bottom: 0, left: 0 }}>
         {formattedCoordinates.length > 0 && (
           <>
+            {/* Main polyline */}
             <Polyline
               coordinates={formattedCoordinates}
               strokeWidth={2}
-              strokeColor={COLORS.primary}
+              strokeColor={COLORS.secondary}
             />
+            {/* Start point indicator - Native markers for all modes */}
             {startMarker && formattedCoordinates.length > 0 && (
               <Marker
                 coordinate={formattedCoordinates[0]}
-                anchor={{ x: 0.5, y: 0.5 }}
-                centerOffset={{ x: 0, y: 0 }}>
-                <View style={[styles.markerContainer, styles.startMarker]}>
-                  <MaterialIcons
-                    name="play-arrow"
-                    size={16}
-                    color="#fff"
-                  />
-                </View>
-              </Marker>
+                pinColor={COLORS.success}
+                anchor={{ x: 0.5, y: 1 }}
+                tracksViewChanges={false}
+              />
             )}
+            {/* End point indicator - Native markers for all modes */}
             {endMarker && formattedCoordinates.length > 1 && (
               <Marker
                 coordinate={
                   formattedCoordinates[formattedCoordinates.length - 1]
                 }
-                anchor={{ x: 0.5, y: 0.5 }}
-                centerOffset={{ x: 0, y: 0 }}>
-                <View style={[styles.markerContainer, styles.endMarker]}>
-                  <MaterialIcons
-                    name="flag"
-                    size={16}
-                    color="#fff"
-                  />
-                </View>
-              </Marker>
+                pinColor={COLORS.danger}
+                anchor={{ x: 0.5, y: 1 }}
+                tracksViewChanges={false}
+              />
             )}
           </>
         )}
@@ -283,21 +318,6 @@ const styles = StyleSheet.create({
   map: {
     width: "100%",
     height: "100%",
-  },
-  markerContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 3,
-    borderColor: "#FFFFFF",
-  },
-  startMarker: {
-    backgroundColor: COLORS.success,
-  },
-  endMarker: {
-    backgroundColor: COLORS.danger,
   },
 });
 

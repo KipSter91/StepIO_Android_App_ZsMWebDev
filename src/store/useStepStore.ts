@@ -39,11 +39,11 @@ interface StepStore {
   // App initialization state
   initializationStatus: InitializationStatus | null;
   isAppReady: boolean;
-
   // Session actions
   addSession: (session: StepSession) => void;
   updateActiveSession: (data: Partial<StepSession>) => void;
   getSessionById: (id: string) => StepSession | undefined;
+  deleteSession: (id: string) => void;
   startTracking: () => void;
   stopTracking: () => void;
 
@@ -106,9 +106,14 @@ export const useStepStore = create<StepStore>()(
           };
         });
       },
-
       getSessionById: (id) => {
         return get().sessions.find((session) => session.id === id);
+      },
+
+      deleteSession: (id) => {
+        set((state) => ({
+          sessions: state.sessions.filter((session) => session.id !== id),
+        }));
       },
       startTracking: () => {
         const newSession: StepSession = {
