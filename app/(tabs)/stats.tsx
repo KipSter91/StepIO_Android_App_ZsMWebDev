@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -38,72 +38,133 @@ interface StatsData {
   activeDays: number; // This will represent active hours for day view, active days for other views
 }
 
-// Simple chart component to replace victory-native
-const SimpleChart = ({
-  data,
-  labels,
-  dateRangeType,
-  dateRange,
-}: {
-  data: number[];
-  labels?: string[];
-  dateRangeType: DateRangeType;
-  dateRange?: DateRange;
-}) => {
-  const maxValue = Math.max(...data, 1);
-  const [chartHeight, setChartHeight] = React.useState(140); // default to style height
+// Memoized simple chart component to replace victory-native
+const SimpleChart = React.memo(
+  ({
+    data,
+    labels,
+    dateRangeType,
+    dateRange,
+  }: {
+    data: number[];
+    labels?: string[];
+    dateRangeType: DateRangeType;
+    dateRange?: DateRange;
+  }) => {
+    const maxValue = Math.max(...data, 1);
+    const [chartHeight, setChartHeight] = React.useState(140); // default to style height
 
-  // Generate Y-axis labels (nice numbers, always 5 labels, maxValue at top or felette)
-  function getNiceChartMax(value: number) {
-    if (value <= 0) return 1;
-    const exponent = Math.floor(Math.log10(value));
-    const fraction = value / Math.pow(10, exponent);
-    let niceFraction;
-    if (fraction <= 1) niceFraction = 1;
-    else if (fraction <= 2) niceFraction = 2;
-    else if (fraction <= 2.5) niceFraction = 2.5;
-    else if (fraction <= 5) niceFraction = 5;
-    else niceFraction = 10;
-    return niceFraction * Math.pow(10, exponent);
-  }
+    // Memoize expensive calculations
+    const chartCalculations = useMemo(() => {
+      // Generate Y-axis labels (nice numbers, always 5 labels, maxValue at top or felette)
+      function getNiceChartMax(value: number) {
+        if (value <= 0) return 1;
+        const exponent = Math.floor(Math.log10(value));
+        const fraction = value / Math.pow(10, exponent);
+        let niceFraction;
+        if (fraction <= 1) niceFraction = 1;
+        else if (fraction <= 2) niceFraction = 2;
+        else if (fraction <= 2.5) niceFraction = 2.5;
+        else if (fraction <= 5) niceFraction = 5;
+        else niceFraction = 10;
+        return niceFraction * Math.pow(10, exponent);
+      }
 
-  const chartMax = getNiceChartMax(maxValue);
-  // --- Y Axis labels and grid lines logic ---
-  // We want 4 grid lines (not 0), but the bars should start at the bottom (0),
-  // so the chartMax (top) -> 0 (bottom) mapping must be precise.
-  // The grid lines should be at 1, 0.75, 0.5, 0.25 of chartMax, but the bar height calculation must always use the full chartHeight for chartMax.
+      const chartMax = getNiceChartMax(maxValue);
+      const yAxisLabels = [
+        chartMax,
+        chartMax * 0.75,
+        chartMax * 0.5,
+        chartMax * 0.25,
+      ];
 
-  // yAxisLabels: only 4 visible values (no 0), but keep 5 slots for correct grid/bar mapping
-  const yAxisLabels = [
-    chartMax,
-    chartMax * 0.75,
-    chartMax * 0.5,
-    chartMax * 0.25,
-  ];
-  const yAxisLabelSlots = 5; // for grid line math
+      return { chartMax, yAxisLabels };
+    }, [maxValue]);
 
-  const formatYAxisLabel = (value: number): string => {
-    if (value >= 1000) {
-      return `${(value / 1000).toFixed(1)}k`;
-    }
-    return value.toString();
-  };
-  const getLabel = (index: number): string => {
-    if (labels && labels[index]) return labels[index];
+    const { chartMax, yAxisLabels } = chartCalculations;
+    const yAxisLabelSlots = 5; // for grid line math
 
-    switch (dateRangeType) {
-      case "day":
-        // Show every 4th hour to reduce clutter
-        if (index % 4 === 0) {
-          return index < 10 ? `0${index}` : index.toString();
+    // Memoize label formatting function
+    const formatYAxisLabel = useCallback((value: number): string => {
+      if (value >= 1000) {
+        return `${(value / 1000).toFixed(0)}k`;
+      }
+      return value.toFixed(0);
+    }, []);
+
+    // Memoize label generation
+    const getLabel = useCallback(
+      (index: number): string => {
+        if (labels && labels[index]) return labels[index];
+
+        switch (dateRangeType) {
+          case "day":
+            // Show every 4th hour to reduce clutter
+            if (index % 4 === 0) {
+              return index < 10 ? `0${index}` : index.toString();
+            }
+            return "";
+          case "week":
+            return (
+              ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index] || ""
+            );
+          case "month": {
+            // For month view, only show labels for certain days and not in the future
+            const dayNumber = index + 1;
+            if (dateRange) {
+              const dayDate = new Date(
+                dateRange.from.getFullYear(),
+                dateRange.from.getMonth(),
+                dayNumber
+              );
+              const today = new Date();
+              today.setHours(23, 59, 59, 999);
+
+              // Only show label for every 5th day or last day of month, and not in future
+              if (
+                dayDate <= today &&
+                (dayNumber % 5 === 1 ||
+                  dayNumber ===
+                    new Date(
+                      dateRange.from.getFullYear(),
+                      dateRange.from.getMonth() + 1,
+                      0
+                    ).getDate())
+              ) {
+                return dayNumber.toString();
+              }
+            }
+            return "";
+          }
+          case "year":
+            return (
+              [
+                "Jan",
+                "Feb",
+                "Mar",
+                "Apr",
+                "May",
+                "Jun",
+                "Jul",
+                "Aug",
+                "Sep",
+                "Oct",
+                "Nov",
+                "Dec",
+              ][index] || ""
+            );
+          default:
+            return "";
         }
-        return "";
-      case "week":
-        return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][index] || "";
-      case "month": {
-        // For month view, only show labels for certain days and not in the future
-        const dayNumber = index + 1;
-        if (dateRange) {
+      },
+      [dateRangeType, labels, dateRange]
+    );
+
+    // Memoize shouldShowBar function
+    const shouldShowBar = useCallback(
+      (index: number): boolean => {
+        if (dateRangeType === "month" && dateRange) {
+          const dayNumber = index + 1;
           const dayDate = new Date(
             dateRange.from.getFullYear(),
             dateRange.from.getMonth(),
@@ -112,153 +173,127 @@ const SimpleChart = ({
           const today = new Date();
           today.setHours(23, 59, 59, 999);
 
-          // Only show label for every 5th day or last day of month, and not in future
-          if (
-            dayDate <= today &&
-            (dayNumber % 5 === 1 ||
-              dayNumber ===
-                new Date(
-                  dateRange.from.getFullYear(),
-                  dateRange.from.getMonth() + 1,
-                  0
-                ).getDate())
-          ) {
-            return dayNumber.toString();
-          }
+          // Only show bar if this day is not in the future
+          return dayDate <= today;
         }
-        return "";
-      }
-      case "year":
-        return (
-          [
-            "Jan",
-            "Feb",
-            "Mar",
-            "Apr",
-            "May",
-            "Jun",
-            "Jul",
-            "Aug",
-            "Sep",
-            "Oct",
-            "Nov",
-            "Dec",
-          ][index] || ""
-        );
-      default:
-        return "";
-    }
-  };
+        return true;
+      },
+      [dateRangeType, dateRange]
+    );
 
-  const shouldShowBar = (index: number): boolean => {
-    if (dateRangeType === "month" && dateRange) {
-      const dayNumber = index + 1;
-      const dayDate = new Date(
-        dateRange.from.getFullYear(),
-        dateRange.from.getMonth(),
-        dayNumber
-      );
-      const today = new Date();
-      today.setHours(23, 59, 59, 999);
-
-      // Only show bar if this day is not in the future
-      return dayDate <= today;
-    }
-    return true;
-  };
-
-  return (
-    <View style={styles.chartContainer}>
-      <View style={styles.chartWithAxis}>
-        {/* Y-Axis Labels */}
-        <View style={styles.yAxis}>
-          {yAxisLabels.map((value, index) => (
-            <Text
-              key={index}
-              style={styles.yAxisLabel}>
-              {formatYAxisLabel(value)}
-            </Text>
-          ))}
-          {/* Invisible label for 0, to keep spacing */}
-          <Text style={[styles.yAxisLabel, { opacity: 0 }]}>0</Text>
-        </View>
-        {/* Chart Bars + Grid Lines */}
-        <View
-          style={styles.chartBars}
-          onLayout={(e) => setChartHeight(e.nativeEvent.layout.height)}>
-          {/* Horizontal grid lines (no 0 line) */}
-          {Array.from({ length: yAxisLabelSlots - 1 }).map((_, index) => (
-            <View
-              key={"hgrid-" + index}
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                // 0 (top) to 3 (bottom) for 4 lines, so index/(slots-1)
-                top: `${(index / (yAxisLabelSlots - 1)) * 100}%`,
-                height: 1,
-                backgroundColor: "rgba(255,255,255,0.08)",
-                zIndex: 0,
-              }}
-            />
-          ))}
-          {/* Chart Bars */}
-          {data.map((value, index) => {
-            // Clamp value to [0, chartMax] for safety
-            const clamped = Math.max(0, Math.min(value, chartMax));
-            // Height is proportional to chartMax, so 0 -> 0px, chartMax -> chartHeight
-            const height = (clamped / chartMax) * chartHeight;
-            const showBar = shouldShowBar(index);
-            return (
-              <View
-                key={index}
-                style={styles.barContainer}>
-                {showBar && (
-                  <LinearGradient
-                    colors={[COLORS.primary, COLORS.secondary]}
-                    style={[
-                      styles.bar,
-                      { height: Math.max(height, 2), zIndex: 1 },
-                    ]}
-                  />
-                )}
-                <Text style={[styles.barLabel, !showBar && { opacity: 0.3 }]}>
-                  {getLabel(index)}
+    return (
+      <View style={styles.chartContainer}>
+        <View style={styles.chartWithAxis}>
+          {/* Y-Axis Labels */}
+          <View style={[styles.yAxis, { position: "relative" }]}>
+            {yAxisLabels.map((value, index) => {
+              const chartBarsHeight = 140;
+              const percent = index / (yAxisLabelSlots - 1);
+              const topPx = percent * chartBarsHeight - 10; // ugyanaz, mint a grid line
+              return (
+                <Text
+                  key={index}
+                  style={[
+                    styles.yAxisLabel,
+                    {
+                      position: "absolute",
+                      top: topPx,
+                      right: 0,
+                      width: "100%",
+                    },
+                  ]}>
+                  {formatYAxisLabel(value)}
                 </Text>
-              </View>
-            );
-          })}
+              );
+            })}
+            {/* Invisible label for 0, to keep spacing */}
+            <Text style={[styles.yAxisLabel, { opacity: 0 }]}>0</Text>
+          </View>
+          {/* Chart Bars + Grid Lines */}
+          <View
+            style={styles.chartBars}
+            onLayout={(e) => setChartHeight(e.nativeEvent.layout.height)}>
+            {/* Horizontal grid lines (no 0 line) */}
+            {Array.from({ length: yAxisLabelSlots - 1 }).map((_, index) => {
+              // Számoljuk ki a top pozíciót pixelben, majd toljuk feljebb 8 pixellel
+              const chartBarsHeight = 140; // Ugyanaz, mint a styles.chartBars.height
+              const percent = index / (yAxisLabelSlots - 1);
+              const topPx = percent * chartBarsHeight - 10; // 10px-el feljebb
+              return (
+                <View
+                  key={"hgrid-" + index}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    top: topPx,
+                    height: 1,
+                    backgroundColor: "rgba(255,255,255,0.08)",
+                    zIndex: 0,
+                  }}
+                />
+              );
+            })}
+            {/* Chart Bars */}
+            {data.map((value, index) => {
+              // Clamp value to [0, chartMax] for safety
+              const clamped = Math.max(0, Math.min(value, chartMax));
+              // Height is proportional to chartMax, so 0 -> 0px, chartMax -> chartHeight
+              const height = (clamped / chartMax) * chartHeight;
+              const showBar = shouldShowBar(index);
+              return (
+                <View
+                  key={index}
+                  style={styles.barContainer}>
+                  {showBar && (
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.secondary]}
+                      style={[
+                        styles.bar,
+                        { height: Math.max(height, 2), zIndex: 1 },
+                      ]}
+                    />
+                  )}
+                  <Text style={[styles.barLabel, !showBar && { opacity: 0.3 }]}>
+                    {getLabel(index)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
         </View>
       </View>
-    </View>
-  );
-};
+    );
+  }
+);
 
-const StatCard = ({
-  title,
-  value,
-  icon,
-  subtitle,
-}: {
-  title: string;
-  value: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  subtitle?: string;
-}) => (
-  <LinearGradient
-    colors={GRADIENTS.storyCard}
-    style={styles.statCard}>
-    <View style={styles.statCardHeader}>
-      <Ionicons
-        name={icon}
-        size={24}
-        color={COLORS.primary}
-      />
-      <Text style={styles.statTitle}>{title}</Text>
-    </View>
-    <Text style={styles.statValue}>{value}</Text>
-    {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
-  </LinearGradient>
+const StatCard = React.memo(
+  ({
+    title,
+    value,
+    icon,
+    subtitle,
+  }: {
+    title: string;
+    value: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    subtitle?: string;
+  }) => (
+    <LinearGradient
+      colors={GRADIENTS.storyCard}
+      style={styles.statCard}>
+      <View style={styles.statCardHeader}>
+        <Ionicons
+          name={icon}
+          size={24}
+          color={COLORS.primary}
+        />
+        <Text style={styles.statTitle}>{title}</Text>
+      </View>
+      <Text style={styles.statValue}>{value}</Text>
+      {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
+    </LinearGradient>
+  )
 );
 
 export default function StatsScreen() {
@@ -363,9 +398,8 @@ export default function StatsScreen() {
       setDateRange(newRange);
       loadStatsData(newRange);
     }
-  }, [selectedRange]);
-  // Helper function to generate date array for a given range
-  const generateDateArray = (range: DateRange): Date[] => {
+  }, [selectedRange]); // Helper function to generate date array for a given range
+  const generateDateArray = useCallback((range: DateRange): Date[] => {
     const dates: Date[] = [];
     const currentDate = new Date(range.from);
     const endDate = new Date(range.to);
@@ -385,15 +419,19 @@ export default function StatsScreen() {
     }
 
     return dates;
-  };
+  }, []);
+
   // Helper function to get period key for grouping data
-  const getPeriodKey = (date: Date, type: DateRangeType): string => {
-    // Always use local YYYY-MM-DD for period keys (not UTC)
-    const localDateString = `${date.getFullYear()}-${(date.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
-    return localDateString;
-  };
+  const getPeriodKey = useCallback(
+    (date: Date, type: DateRangeType): string => {
+      // Always use local YYYY-MM-DD for period keys (not UTC)
+      const localDateString = `${date.getFullYear()}-${(date.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+      return localDateString;
+    },
+    []
+  );
   const loadStatsData = async (range: DateRange) => {
     try {
       // Prevent loading data for future dates
@@ -506,16 +544,16 @@ export default function StatsScreen() {
       // Hiba esetén ne logoljunk, csak némán ne frissítsen
     }
   };
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     await loadStatsData(dateRange);
     setIsRefreshing(false);
-  };
+  }, [dateRange]);
 
-  const handleDateRangeChange = (newRange: DateRange) => {
+  const handleDateRangeChange = useCallback((newRange: DateRange) => {
     setDateRange(newRange);
     loadStatsData(newRange);
-  };
+  }, []);
   useEffect(() => {
     loadStatsData(dateRange);
     const stepUpdateHandler = () => {
@@ -527,17 +565,16 @@ export default function StatsScreen() {
     return () => {
       nativeStepCounterService.removeStepUpdateListener(stepUpdateHandler);
     };
-  }, [dateRange, sessions]);
-  // Generate chart data for different periods
-  const getChartDataForPeriod = () => {
+  }, [dateRange, sessions]); // Generate chart data for different periods - Memoized for performance
+  const chartData = useMemo(() => {
     if (dateRange.type === "day") {
       // For day view, return hourly data
-      const hourlyData = Array.from(
+      return Array.from(
         { length: 24 },
         (_, index) => statsData.hourlySteps[index.toString()] || 0
       );
-      return hourlyData;
     }
+
     switch (dateRange.type) {
       case "week": {
         const weekData = Array(7).fill(0);
@@ -589,8 +626,10 @@ export default function StatsScreen() {
       default:
         return [];
     }
-  };
-  const getChartTitle = () => {
+  }, [dateRange, statsData.hourlySteps, periodChartData, generateDateArray]);
+
+  // Memoize chart title and subtitle
+  const chartTitle = useMemo(() => {
     switch (dateRange.type) {
       case "day":
         return "Hourly Activity";
@@ -601,8 +640,9 @@ export default function StatsScreen() {
       case "year":
         return "Monthly Activity";
     }
-  };
-  const getChartSubtitle = () => {
+  }, [dateRange.type]);
+
+  const chartSubtitle = useMemo(() => {
     const formatDate = (date: Date) => {
       return date.toLocaleDateString("en-US", {
         year: "numeric",
@@ -634,8 +674,10 @@ export default function StatsScreen() {
       case "year":
         return `Monthly steps for ${formatYear(dateRange.from)}`;
     }
-  };
-  const getMaxDaysForPeriod = () => {
+  }, [dateRange]);
+
+  // Memoize max days calculation
+  const maxDaysForPeriod = useMemo(() => {
     switch (dateRange.type) {
       case "day":
         return 1;
@@ -655,7 +697,7 @@ export default function StatsScreen() {
         return isLeapYear ? 366 : 365;
       }
     }
-  };
+  }, [dateRange]);
   return (
     <ImageBackground
       source={require("../../assets/images/stepio-background.png")}
@@ -722,9 +764,7 @@ export default function StatsScreen() {
               value={`${statsData.activeDays}`}
               icon="time"
               subtitle={
-                dateRange.type === "day"
-                  ? "of 24"
-                  : `of ${getMaxDaysForPeriod()}`
+                dateRange.type === "day" ? "of 24" : `of ${maxDaysForPeriod}`
               }
             />
           </View>
@@ -734,11 +774,11 @@ export default function StatsScreen() {
           colors={GRADIENTS.storyCard}
           style={styles.chartSection}>
           <View style={styles.chartHeader}>
-            <Text style={styles.chartTitle}>{getChartTitle()}</Text>
-            <Text style={styles.chartSubtitle}>{getChartSubtitle()}</Text>
+            <Text style={styles.chartTitle}>{chartTitle}</Text>
+            <Text style={styles.chartSubtitle}>{chartSubtitle}</Text>
           </View>
           <SimpleChart
-            data={getChartDataForPeriod()}
+            data={chartData}
             dateRangeType={dateRange.type}
             dateRange={dateRange}
           />
@@ -839,9 +879,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.darkBorder,
   },
-  chartHeader: {
-    marginBottom: SPACING.lg,
-  },
+  chartHeader: {},
   chartTitle: {
     ...FONTS.bold,
     fontSize: FONTS.sizes.lg,
