@@ -268,10 +268,8 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
             <View style={styles.mainContent}>
               <View style={styles.iconContainer}>
                 <LinearGradient
-                  colors={GRADIENTS.primaryToSecondary}
-                  style={styles.iconBackground}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}>
+                  colors={[COLORS.primary, COLORS.secondary]}
+                  style={styles.iconBackground}>
                   <Ionicons
                     name={getWeatherIcon()}
                     size={28}

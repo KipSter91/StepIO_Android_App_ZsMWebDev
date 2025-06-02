@@ -591,10 +591,9 @@ export default function PathTrackingScreen() {
             style={styles.startButton}
             onPress={handleStartTracking}>
             <LinearGradient
-              colors={GRADIENTS.primaryToSecondary}
+              colors={[COLORS.primary, COLORS.secondary]}
               style={styles.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}>
+              >
               <MaterialIcons
                 name="play-arrow"
                 size={28}

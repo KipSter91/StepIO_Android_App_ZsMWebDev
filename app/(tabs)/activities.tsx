@@ -68,7 +68,7 @@ export default function ActivitiesScreen() {
             style={styles.emptyCard}>
             <View style={styles.emptyIconContainer}>
               <LinearGradient
-                colors={GRADIENTS.primaryToSecondary}
+                colors={[COLORS.primary, COLORS.secondary]}
                 style={styles.emptyIconBackground}>
                 <Ionicons
                   name="walk-outline"
@@ -79,13 +79,13 @@ export default function ActivitiesScreen() {
             </View>
             <Text style={styles.emptyTitle}>No Activities Yet</Text>
             <Text style={styles.emptyMessage}>
-              Start tracking your walks and runs to see them here
+              Start tracking your walks to see them here
             </Text>
             <TouchableOpacity
               style={styles.startButton}
               onPress={() => router.push("/(tabs)/path-tracking")}>
               <LinearGradient
-                colors={GRADIENTS.primaryToSecondary}
+                colors={[COLORS.primary, COLORS.secondary]}
                 style={styles.startButtonGradient}>
                 <Ionicons
                   name="play"
@@ -135,17 +135,6 @@ function ActivityItem({
         colors={GRADIENTS.storyCard}
         style={styles.activityCardGradient}>
         <View style={styles.activityItemContent}>
-          <View style={styles.activityIcon}>
-            <LinearGradient
-              colors={GRADIENTS.primaryToSecondary}
-              style={styles.activityIconGradient}>
-              <Ionicons
-                name="walk-outline"
-                size={24}
-                color={COLORS.white}
-              />
-            </LinearGradient>
-          </View>
           <View style={styles.activityDetails}>
             <Text style={styles.activityTime}>{activityTime}</Text>
             <Text style={styles.activityStats}>
@@ -283,18 +272,6 @@ const styles = StyleSheet.create({
   },
   activityItemContent: {
     flexDirection: "row",
-    alignItems: "center",
-  },
-  activityIcon: {
-    width: 48,
-    height: 48,
-    marginRight: SPACING.md,
-  },
-  activityIconGradient: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 24,
-    justifyContent: "center",
     alignItems: "center",
   },
   activityDetails: {

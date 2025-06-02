@@ -285,9 +285,7 @@ export default function ActivityDetailsScreen() {
           <TouchableOpacity style={styles.actionButton}>
             <LinearGradient
               colors={[COLORS.primary, COLORS.secondary]}
-              style={styles.actionButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}>
+              style={styles.actionButtonGradient}>
               <Ionicons
                 name="share"
                 size={20}

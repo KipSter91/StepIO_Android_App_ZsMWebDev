@@ -173,10 +173,8 @@ export default function HomeScreen() {
               </View>
               <View style={styles.statsIcon}>
                 <LinearGradient
-                  colors={GRADIENTS.primaryToSecondary}
-                  style={styles.iconBackground}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}>
+                  colors={[COLORS.primary, COLORS.secondary]}
+                  style={styles.iconBackground}>
                   <Ionicons
                     name="footsteps"
                     size={28}
