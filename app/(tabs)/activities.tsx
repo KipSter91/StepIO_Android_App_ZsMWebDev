@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   StyleSheet,
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   Image,
 } from "react-native";
 import { router } from "expo-router";
@@ -17,8 +17,70 @@ import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
 export default function ActivitiesScreen() {
   const { sessions } = useStepStore();
 
-  // Group sessions by date
-  const groupedSessions = groupSessionsByDate(sessions);
+  // Create flattened data for FlatList
+  const flattenedData = useMemo(() => {
+    const groupedSessions = groupSessionsByDate(sessions);
+    const data: Array<
+      | { type: "date"; date: string; formattedDate: string }
+      | { type: "session"; session: StepSession }
+    > = [];
+
+    // Sort dates in descending order and create flat array
+    Object.entries(groupedSessions)
+      .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+      .forEach(([date, daySessions]) => {
+        // Add date header
+        data.push({
+          type: "date",
+          date,
+          formattedDate: formatDateHeader(date),
+        });
+
+        // Add sessions for this date
+        daySessions.forEach((session) => {
+          data.push({
+            type: "session",
+            session,
+          });
+        });
+      });
+
+    return data;
+  }, [sessions]);
+  const renderItem = ({
+    item,
+  }: {
+    item:
+      | { type: "date"; date: string; formattedDate: string }
+      | { type: "session"; session: StepSession };
+  }) => {
+    if (item.type === "date") {
+      return <Text style={styles.dateHeader}>{item.formattedDate}</Text>;
+    } else {
+      return (
+        <ActivityItem
+          session={item.session}
+          onPress={() => {
+            router.push(`/${item.session.id}`);
+          }}
+        />
+      );
+    }
+  };
+
+  const getItemKey = (
+    item:
+      | { type: "date"; date: string; formattedDate: string }
+      | { type: "session"; session: StepSession },
+    index: number
+  ) => {
+    if (item.type === "date") {
+      return `date-${item.date}`;
+    } else {
+      return `session-${item.session.id}`;
+    }
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
@@ -33,34 +95,24 @@ export default function ActivitiesScreen() {
       </View>
 
       {sessions.length > 0 ? (
-        <ScrollView
+        <FlatList
+          data={flattenedData}
+          renderItem={renderItem}
+          keyExtractor={getItemKey}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Your Path Tracking History</Text>
-          </View>
-          {/* Activities List */}
-          {Object.entries(groupedSessions)
-            .sort(([dateA], [dateB]) => dateB.localeCompare(dateA)) // Sort dates in descending order
-            .map(([date, daySessions]) => (
-              <View
-                key={date}
-                style={styles.dateGroup}>
-                <Text style={styles.dateHeader}>{formatDateHeader(date)}</Text>
-                {daySessions.map((session) => (
-                  <ActivityItem
-                    key={session.id}
-                    session={session}
-                    onPress={() => {
-                      // For now, navigate to stats or a placeholder
-                      router.push(`/${session.id}`);
-                    }}
-                  />
-                ))}
-              </View>
-            ))}
-        </ScrollView>
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
+          getItemLayout={undefined}
+          ListHeaderComponent={() => (
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Your Path Tracking History</Text>
+            </View>
+          )}
+        />
       ) : (
         <View style={styles.emptyContainer}>
           <LinearGradient
@@ -103,57 +155,56 @@ export default function ActivitiesScreen() {
 }
 
 // Activity item component
-function ActivityItem({
-  session,
-  onPress,
-}: {
-  session: StepSession;
-  onPress: () => void;
-}) {
-  // Calculate duration in minutes
-  const durationMs = (session.endTime || Date.now()) - session.startTime;
-  const durationMins = Math.floor(durationMs / (1000 * 60));
+const ActivityItem = React.memo(
+  ({ session, onPress }: { session: StepSession; onPress: () => void }) => {
+    // Calculate duration in minutes
+    const durationMs = (session.endTime || Date.now()) - session.startTime;
+    const durationMins = Math.floor(durationMs / (1000 * 60));
 
-  // Use saved distance if available, otherwise estimate from steps
-  const distanceKm =
-    typeof session.distance === "number"
-      ? session.distance.toFixed(1)
-      : (session.steps * 0.0008).toFixed(1);
+    // Use saved distance if available, otherwise estimate from steps
+    const distanceKm =
+      typeof session.distance === "number"
+        ? session.distance.toFixed(1)
+        : (session.steps * 0.0008).toFixed(1);
 
-  // Activity time
-  const activityTime = new Date(session.startTime).toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+    // Activity time
+    const activityTime = new Date(session.startTime).toLocaleTimeString(
+      "en-US",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }
+    );
 
-  return (
-    <TouchableOpacity
-      style={styles.activityItem}
-      onPress={onPress}>
-      <LinearGradient
-        colors={GRADIENTS.storyCard}
-        style={styles.activityCardGradient}>
-        <View style={styles.activityItemContent}>
-          <View style={styles.activityDetails}>
-            <Text style={styles.activityTime}>{activityTime}</Text>
-            <Text style={styles.activityStats}>
-              {durationMins} min • {session.steps.toLocaleString()} steps •{" "}
-              {distanceKm} km
-            </Text>
+    return (
+      <TouchableOpacity
+        style={styles.activityItem}
+        onPress={onPress}>
+        <LinearGradient
+          colors={GRADIENTS.storyCard}
+          style={styles.activityCardGradient}>
+          <View style={styles.activityItemContent}>
+            <View style={styles.activityDetails}>
+              <Text style={styles.activityTime}>{activityTime}</Text>
+              <Text style={styles.activityStats}>
+                {durationMins} min • {session.steps.toLocaleString()} steps •{" "}
+                {distanceKm} km
+              </Text>
+            </View>
+            <View style={styles.activityChevron}>
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.darkMuted}
+              />
+            </View>
           </View>
-          <View style={styles.activityChevron}>
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={COLORS.darkMuted}
-            />
-          </View>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
-}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+);
 
 // Helper function to group sessions by date
 function groupSessionsByDate(sessions: StepSession[]) {
@@ -241,27 +292,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
   },
   header: {
-    marginBottom: SPACING.xl,
+    alignItems: "center",
   },
   headerTitle: {
     ...FONTS.bold,
     fontSize: FONTS.sizes.xxl,
     color: COLORS.white,
-    marginBottom: SPACING.xs,
-  },
-  dateGroup: {
-    marginBottom: SPACING.xl,
+    textAlign: "center",
   },
   dateHeader: {
     ...FONTS.semibold,
     fontSize: FONTS.sizes.lg,
     color: COLORS.primary,
+    marginTop: SPACING.lg,
     marginBottom: SPACING.md,
+    marginHorizontal: SPACING.lg,
     textTransform: "uppercase",
     letterSpacing: 1.0,
   },
   activityItem: {
     marginBottom: SPACING.md,
+    marginHorizontal: SPACING.lg,
     borderRadius: 16,
     overflow: "hidden",
     borderWidth: 1,

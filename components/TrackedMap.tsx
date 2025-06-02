@@ -199,18 +199,84 @@ const TrackedMap = ({
   isTrackingActive = false,
 }: TrackedMapProps) => {
   const mapRef = useRef<MapView>(null);
-  const hasCenteredRef = useRef(false);
-  // Format coordinates for react-native-maps
-  const formattedCoordinates = coordinates.map((coord) => ({
+  const hasCenteredRef = useRef(false); // Optimize coordinates - reduce density for better performance while maintaining visual quality
+  const optimizeCoordinates = (coords: LatLng[], maxPoints?: number) => {
+    // Adaptive optimization based on route length and usage
+    const totalPoints = coords.length;
+
+    // Estimate route length (rough calculation)
+    const estimatedKm = totalPoints * 0.005; // ~5 points per 25m = 200 points per km
+
+    let targetMaxPoints;
+    if (readOnly) {
+      // Historical view: scale based on route length
+      if (estimatedKm <= 1) targetMaxPoints = 200;
+      else if (estimatedKm <= 3) targetMaxPoints = 350;
+      else if (estimatedKm <= 5) targetMaxPoints = 500;
+      else if (estimatedKm <= 10) targetMaxPoints = 750;
+      else targetMaxPoints = 1000; // Very long routes
+    } else {
+      // Live tracking: more points for smoother real-time experience
+      if (estimatedKm <= 1) targetMaxPoints = 300;
+      else if (estimatedKm <= 3) targetMaxPoints = 500;
+      else if (estimatedKm <= 5) targetMaxPoints = 800;
+      else if (estimatedKm <= 10) targetMaxPoints = 1200;
+      else targetMaxPoints = 1500; // Very long routes
+    }
+
+    // Override with manual parameter if provided
+    if (maxPoints) targetMaxPoints = maxPoints;
+
+    if (coords.length <= targetMaxPoints) return coords;
+
+    // Intelligent sampling strategy
+    const optimized = [];
+
+    // Always include first point
+    optimized.push(coords[0]);
+
+    if (totalPoints <= 50) {
+      // Short routes: keep all points
+      return coords;
+    } else if (totalPoints <= 200) {
+      // Medium routes: keep every 2nd point
+      for (let i = 1; i < coords.length - 1; i += 2) {
+        optimized.push(coords[i]);
+      }
+    } else if (totalPoints <= 500) {
+      // Long routes: keep every 3rd point
+      for (let i = 2; i < coords.length - 1; i += 3) {
+        optimized.push(coords[i]);
+      }
+    } else {
+      // Very long routes: adaptive sampling
+      const step = Math.max(2, Math.floor(totalPoints / (targetMaxPoints - 2)));
+      for (let i = step; i < coords.length - 1; i += step) {
+        optimized.push(coords[i]);
+      }
+    }
+
+    // Always include last point
+    if (coords.length > 1) {
+      optimized.push(coords[coords.length - 1]);
+    }
+
+    return optimized;
+  };
+  // Format coordinates for react-native-maps with optimization
+  const optimizedCoordinates = optimizeCoordinates(coordinates);
+  const formattedCoordinates = optimizedCoordinates.map((coord) => ({
     latitude: coord.lat,
     longitude: coord.lon,
   }));
 
+  // Debug log to monitor optimization (remove in production)
+  // console.log(`Coordinates: ${coordinates.length} -> ${optimizedCoordinates.length} (${readOnly ? 'readonly' : 'live'})`);
   // Function to center the map on coordinates
   const centerMapOnCoordinates = () => {
     if (
       !mapRef.current ||
-      coordinates.length === 0 ||
+      optimizedCoordinates.length === 0 ||
       (readOnly && hasCenteredRef.current)
     )
       return;
@@ -226,10 +292,9 @@ const TrackedMap = ({
         hasCenteredRef.current = true;
       }
     }
-  };
-  // Auto center map on coordinates if there are any
+  }; // Auto center map on coordinates if there are any
   useEffect(() => {
-    if (!autoCenter || coordinates.length === 0) return;
+    if (!autoCenter || optimizedCoordinates.length === 0) return;
 
     // For readOnly mode (activity details), only center once when coordinates are first loaded
     if (readOnly) {
@@ -245,14 +310,17 @@ const TrackedMap = ({
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [autoCenter, readOnly ? coordinates.length > 0 : coordinates]);
+  }, [
+    autoCenter,
+    readOnly ? optimizedCoordinates.length > 0 : optimizedCoordinates,
+  ]);
   // Additional effect to handle map ready state - only for initial load
   useEffect(() => {
     if (readOnly) {
       // Reset centering flag when coordinates change in readOnly mode
       hasCenteredRef.current = false;
     }
-  }, [coordinates.length, readOnly]);
+  }, [optimizedCoordinates.length, readOnly]);
   return (
     <View style={styles.container}>
       <MapView
@@ -266,8 +334,16 @@ const TrackedMap = ({
         showsMyLocationButton={!readOnly && !isTrackingActive}
         showsBuildings={false}
         showsIndoors={false}
+        showsTraffic={false}
+        showsPointsOfInterest={false}
+        showsCompass={false}
+        rotateEnabled={false}
+        pitchEnabled={false}
+        scrollEnabled={true}
+        zoomEnabled={true}
+        moveOnMarkerPress={false}
         onMapReady={() => {
-          if (autoCenter && coordinates.length > 0 && readOnly) {
+          if (autoCenter && optimizedCoordinates.length > 0 && readOnly) {
             setTimeout(() => {
               centerMapOnCoordinates();
             }, 300);
@@ -321,4 +397,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TrackedMap;
+export default React.memo(TrackedMap);

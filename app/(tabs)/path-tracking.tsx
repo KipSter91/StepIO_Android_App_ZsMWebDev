@@ -92,9 +92,22 @@ TaskManager.defineTask(
               continue;
             }
           }
+          // Limit coordinates to prevent memory issues
+          const currentCoords = store.activeSession.coordinates || [];
+          let updatedCoords = [...currentCoords, newCoord];
+
+          // If we have too many coordinates, use intelligent sampling
+          if (updatedCoords.length > 1000) {
+            const first = updatedCoords[0];
+            const recent = updatedCoords.slice(-400);
+            const middle = updatedCoords.slice(1, -400);
+            const sampled = middle.filter((_, index) => index % 3 === 0);
+            updatedCoords = [first, ...sampled, ...recent];
+          }
+
           // Update the active session with new coordinate
           store.updateActiveSession({
-            coordinates: [...(store.activeSession.coordinates || []), newCoord],
+            coordinates: updatedCoords,
           });
         }
       } else {
@@ -372,7 +385,7 @@ export default function PathTrackingScreen() {
       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
         accuracy: Location.Accuracy.Highest,
         timeInterval: 5000,
-        distanceInterval: 2,
+        distanceInterval: 3,
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: "StepIO is tracking your path",
@@ -386,7 +399,7 @@ export default function PathTrackingScreen() {
         {
           accuracy: Location.Accuracy.Highest,
           timeInterval: 5000,
-          distanceInterval: 2,
+          distanceInterval: 3,
         },
         (location) => {
           // New location received
@@ -424,15 +437,31 @@ export default function PathTrackingScreen() {
                 newCoord.lat,
                 newCoord.lon
               );
-              if (distance < 0.002) {
+              if (distance < 0.003) {
                 // Too close to previous coordinate
                 return;
               }
             }
             lastLocationUpdateRef.current = now;
+            // Limit coordinates to prevent memory issues (max 1000 points for better visual quality)
+            const currentCoords = currentSession.coordinates || [];
+            let updatedCoords = [...currentCoords, newCoord];
+
+            // If we have too many coordinates, use intelligent sampling
+            if (updatedCoords.length > 1000) {
+              const first = updatedCoords[0];
+              const recent = updatedCoords.slice(-400); // Keep last 400 points for smooth current tracking
+              const middle = updatedCoords.slice(1, -400);
+
+              // Sample middle section more intelligently - keep every 3rd point
+              const sampled = middle.filter((_, index) => index % 3 === 0);
+
+              updatedCoords = [first, ...sampled, ...recent];
+            }
+
             // Add coordinate to session
             currentState.updateActiveSession({
-              coordinates: [...(currentSession.coordinates || []), newCoord],
+              coordinates: updatedCoords,
             });
           } else {
             // No active session or not tracking, ignoring location update
@@ -592,8 +621,7 @@ export default function PathTrackingScreen() {
             onPress={handleStartTracking}>
             <LinearGradient
               colors={[COLORS.primary, COLORS.secondary]}
-              style={styles.buttonGradient}
-              >
+              style={styles.buttonGradient}>
               <MaterialIcons
                 name="play-arrow"
                 size={28}
