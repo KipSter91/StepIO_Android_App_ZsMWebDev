@@ -682,7 +682,7 @@ export default function StatsScreen() {
             <View style={styles.headerButtons}>
               <TouchableOpacity
                 style={styles.calendarButton}
-                onPress={() => router.push("/modal")}>
+                onPress={() => router.push("/calendar")}>
                 <LinearGradient
                   colors={[COLORS.primary, COLORS.secondary]}
                   style={styles.calendarButtonGradient}>

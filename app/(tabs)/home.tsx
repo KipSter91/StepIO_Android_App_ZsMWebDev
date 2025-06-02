@@ -178,7 +178,7 @@ export default function HomeScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}>
                   <Ionicons
-                    name="walk"
+                    name="footsteps"
                     size={28}
                     color={COLORS.white}
                   />
@@ -211,7 +211,7 @@ export default function HomeScreen() {
 
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
-                  {(todaySteps / 1300).toFixed(1)}km
+                  {(todaySteps * 0.0008).toFixed(1)}km
                 </Text>
                 <Text style={styles.statLabel}>distance</Text>
               </View>

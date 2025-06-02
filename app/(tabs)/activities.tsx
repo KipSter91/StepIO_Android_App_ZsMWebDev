@@ -54,7 +54,7 @@ export default function ActivitiesScreen() {
                     session={session}
                     onPress={() => {
                       // For now, navigate to stats or a placeholder
-                      router.push("/(tabs)/stats");
+                      router.push(`/${session.id}`);
                     }}
                   />
                 ))}
@@ -71,7 +71,7 @@ export default function ActivitiesScreen() {
                 colors={GRADIENTS.primaryToSecondary}
                 style={styles.emptyIconBackground}>
                 <Ionicons
-                  name="walk"
+                  name="walk-outline"
                   size={48}
                   color={COLORS.white}
                 />
@@ -137,7 +137,7 @@ function ActivityItem({
               colors={GRADIENTS.primaryToSecondary}
               style={styles.activityIconGradient}>
               <Ionicons
-                name="walk"
+                name="walk-outline"
                 size={24}
                 color={COLORS.white}
               />
