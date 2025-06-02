@@ -7,7 +7,7 @@ import {
   ScrollView,
   Image,
   Dimensions,
-  Alert,
+  Modal,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -22,6 +22,7 @@ const { width } = Dimensions.get("window");
 export default function ActivityDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { getSessionById, deleteSession } = useStepStore();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Get the specific session by ID
   const session = getSessionById(id as string);
@@ -105,26 +106,14 @@ export default function ActivityDetailsScreen() {
 
     return `${minutes}:${seconds.toString().padStart(2, "0")} min/km`;
   };
-
   const handleDeleteActivity = () => {
-    Alert.alert(
-      "Delete Activity",
-      "Are you sure you want to delete this activity? This action cannot be undone.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            deleteSession(id as string);
-            router.back();
-          },
-        },
-      ]
-    );
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    deleteSession(id as string);
+    setShowDeleteModal(false);
+    router.back();
   };
 
   return (
@@ -324,6 +313,59 @@ export default function ActivityDetailsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <LinearGradient
+              colors={GRADIENTS.storyCard}
+              style={styles.modalGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}>
+              <View style={styles.modalContent}>
+                <Ionicons
+                  name="warning"
+                  size={48}
+                  color={COLORS.danger}
+                  style={styles.modalIcon}
+                />
+                <Text style={styles.modalTitle}>Delete Activity</Text>
+                <Text style={styles.modalMessage}>
+                  Are you sure you want to delete this activity? This action
+                  cannot be undone.
+                </Text>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowDeleteModal(false)}>
+                    <View style={styles.modalButtonSecondary}>
+                      <Text style={styles.modalButtonSecondaryText}>
+                        Cancel
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={confirmDelete}>
+                    <LinearGradient
+                      colors={[COLORS.danger, "#CC0000"]}
+                      style={styles.modalButtonPrimary}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}>
+                      <Text style={styles.modalButtonPrimaryText}>Delete</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -552,5 +594,79 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: COLORS.danger,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SPACING.lg,
+  },
+  modalContainer: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+  },
+  modalGradient: {
+    padding: SPACING.xl,
+  },
+  modalContent: {
+    alignItems: "center",
+  },
+  modalIcon: {
+    marginBottom: SPACING.lg,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: COLORS.white,
+    marginBottom: SPACING.md,
+    textAlign: "center",
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: COLORS.darkMuted,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: SPACING.xl,
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: SPACING.md,
+    width: "100%",
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  modalButtonSecondary: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    backgroundColor: COLORS.darkCard,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalButtonSecondaryText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
+  },
+  modalButtonPrimary: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    alignItems: "center",
+    borderRadius: 12,
+  },
+  modalButtonPrimaryText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
   },
 });
