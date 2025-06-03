@@ -46,4 +46,9 @@ export default ({ config }) => ({
   experiments: {
     typedRoutes: true,
   },
+  extra: {
+    eas: {
+      projectId: "5e9880ad-dc2f-477d-a29c-1f15d7158d81",
+    },
+  },
 });

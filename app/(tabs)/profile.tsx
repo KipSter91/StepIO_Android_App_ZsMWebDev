@@ -6,11 +6,14 @@ import {
   TouchableOpacity,
   TextInput,
   ScrollView,
-  Alert,
+  Image,
+  Modal,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import useStepStore from "../../src/store/useStepStore";
+import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
 
 export default function ProfileScreen() {
   const { userProfile, updateUserProfile } = useStepStore();
@@ -24,20 +27,44 @@ export default function ProfileScreen() {
     userProfile.dailyStepGoal.toString()
   );
 
+  // Modal states
+  const [showModal, setShowModal] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<"error" | "info">("info");
+
+  const showCustomModal = (
+    title: string,
+    message: string,
+    type: "error" | "info" = "info"
+  ) => {
+    setModalTitle(title);
+    setModalMessage(message);
+    setModalType(type);
+    setShowModal(true);
+  };
   const handleSave = () => {
     // Basic validation
     if (!firstName.trim()) {
-      Alert.alert("Missing information", "Please enter your first name.");
+      showCustomModal(
+        "Missing information",
+        "Please enter your first name.",
+        "error"
+      );
       return;
     }
 
     if (!email.trim() || !validateEmail(email)) {
-      Alert.alert("Invalid email", "Please enter a valid email address.");
+      showCustomModal(
+        "Invalid email",
+        "Please enter a valid email address.",
+        "error"
+      );
       return;
     }
 
     if (!age.trim() || isNaN(Number(age)) || Number(age) <= 0) {
-      Alert.alert("Invalid age", "Please enter a valid age.");
+      showCustomModal("Invalid age", "Please enter a valid age.", "error");
       return;
     }
 
@@ -46,9 +73,10 @@ export default function ProfileScreen() {
       isNaN(Number(dailyStepGoal)) ||
       Number(dailyStepGoal) < 1000
     ) {
-      Alert.alert(
+      showCustomModal(
         "Invalid step goal",
-        "Please enter a valid step goal (minimum 1000)."
+        "Please enter a valid step goal (minimum 1000).",
+        "error"
       );
       return;
     }
@@ -73,179 +101,262 @@ export default function ProfileScreen() {
   return (
     <>
       <StatusBar style="light" />
-      <ScrollView style={styles.container}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>
-              {userProfile.firstName?.[0]?.toUpperCase() || "U"}
-            </Text>
-          </View>
-          <Text style={styles.username}>
-            {userProfile.firstName} {userProfile.lastName}
-          </Text>
-          <Text style={styles.userEmail}>{userProfile.email}</Text>
+      <View style={styles.container}>
+        {/* Background with logo */}
+        <View style={styles.backgroundContainer}>
+          <Image
+            source={require("@/assets/images/stepio-background.png")}
+            style={styles.backgroundImage}
+            resizeMode="cover"
+          />
         </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setEditing(!editing)}>
-              <Text style={styles.editButtonText}>
-                {editing ? "Cancel" : "Edit"}
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.profileHeader}>
+            <LinearGradient
+              colors={GRADIENTS.storyCard}
+              style={styles.profileHeaderGradient}>
+              <View style={styles.avatarContainer}>
+                <LinearGradient
+                  colors={[COLORS.primary, COLORS.secondary]}
+                  style={styles.avatarGradient}>
+                  <Text style={styles.avatarText}>
+                    {(() => {
+                      const first =
+                        userProfile.firstName?.[0]?.toUpperCase() || "";
+                      const last =
+                        userProfile.lastName?.[0]?.toUpperCase() || "";
+                      return first + last || "U";
+                    })()}
+                  </Text>
+                </LinearGradient>
+              </View>
+              <Text style={styles.username}>
+                {userProfile.firstName} {userProfile.lastName}
               </Text>
-            </TouchableOpacity>
+              <Text style={styles.userEmail}>{userProfile.email}</Text>
+            </LinearGradient>
           </View>
 
-          {editing ? (
-            <View style={styles.editForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>First Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                />
+          <View style={styles.section}>
+            <LinearGradient
+              colors={GRADIENTS.storyCard}
+              style={styles.sectionGradient}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Personal Information</Text>
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => setEditing(!editing)}>
+                  <LinearGradient
+                    colors={[COLORS.primary, COLORS.secondary]}
+                    style={styles.editButtonGradient}>
+                    <Text style={styles.editButtonText}>
+                      {editing ? "Cancel" : "Edit"}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Last Name</Text>
-                <TextInput
-                  style={styles.input}
-                  value={lastName}
-                  onChangeText={setLastName}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email</Text>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Age</Text>
-                <TextInput
-                  style={styles.input}
-                  value={age}
-                  onChangeText={setAge}
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Daily Step Goal</Text>
-                <TextInput
-                  style={styles.input}
-                  value={dailyStepGoal}
-                  onChangeText={setDailyStepGoal}
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSave}>
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              </TouchableOpacity>
+              {editing ? (
+                <View style={styles.editForm}>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>First Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={firstName}
+                      onChangeText={setFirstName}
+                      placeholderTextColor={COLORS.darkMuted}
+                    />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Last Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={lastName}
+                      onChangeText={setLastName}
+                      placeholderTextColor={COLORS.darkMuted}
+                    />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Email</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      placeholderTextColor={COLORS.darkMuted}
+                    />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Age</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={age}
+                      onChangeText={setAge}
+                      keyboardType="numeric"
+                      placeholderTextColor={COLORS.darkMuted}
+                    />
+                  </View>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Daily Step Goal</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={dailyStepGoal}
+                      onChangeText={setDailyStepGoal}
+                      keyboardType="numeric"
+                      placeholderTextColor={COLORS.darkMuted}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.saveButton}
+                    onPress={handleSave}>
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.secondary]}
+                      style={styles.saveButtonGradient}>
+                      <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View>
+                  <InfoRow
+                    label="First Name"
+                    value={userProfile.firstName}
+                  />
+                  <InfoRow
+                    label="Last Name"
+                    value={userProfile.lastName}
+                  />
+                  <InfoRow
+                    label="Email"
+                    value={userProfile.email}
+                  />
+                  <InfoRow
+                    label="Age"
+                    value={userProfile.age.toString()}
+                  />
+                  <InfoRow
+                    label="Daily Step Goal"
+                    value={`${userProfile.dailyStepGoal.toLocaleString()} steps`}
+                  />
+                </View>
+              )}
+            </LinearGradient>
+          </View>
+          <View style={styles.section}>
+            <LinearGradient
+              colors={GRADIENTS.storyCard}
+              style={styles.sectionGradient}>
+              <Text style={styles.sectionTitle}>App Settings</Text>
+              <SettingRow
+                icon="notifications"
+                label="Notifications"
+                value="On"
+                onPress={() =>
+                  showCustomModal(
+                    "Coming soon",
+                    "Notification settings will be available soon."
+                  )
+                }
+              />
+              <SettingRow
+                icon="language"
+                label="Language"
+                value="English"
+                onPress={() =>
+                  showCustomModal(
+                    "Coming soon",
+                    "Language settings will be available soon."
+                  )
+                }
+              />
+              <SettingRow
+                icon="color-lens"
+                label="Theme"
+                value="Light"
+                onPress={() =>
+                  showCustomModal(
+                    "Coming soon",
+                    "Theme settings will be available soon."
+                  )
+                }
+              />
+            </LinearGradient>
+          </View>
+          <View style={styles.section}>
+            <LinearGradient
+              colors={GRADIENTS.storyCard}
+              style={styles.sectionGradient}>
+              <Text style={styles.sectionTitle}>About</Text>
+              <SettingRow
+                icon="info"
+                label="App Version"
+                value="1.0.0"
+              />
+              <SettingRow
+                icon="description"
+                label="Terms of Service"
+                onPress={() =>
+                  showCustomModal(
+                    "Coming soon",
+                    "Terms of service will be available soon."
+                  )
+                }
+              />
+              <SettingRow
+                icon="lock"
+                label="Privacy Policy"
+                onPress={() =>
+                  showCustomModal(
+                    "Coming soon",
+                    "Privacy policy will be available soon."
+                  )
+                }
+              />
+            </LinearGradient>
+          </View>
+          {/* Extra spacing at bottom */}
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
+        {/* Custom Modal */}
+        <Modal
+          visible={showModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <LinearGradient
+                colors={GRADIENTS.storyCard}
+                style={styles.modalGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}>
+                <View style={styles.modalContent}>
+                  <MaterialIcons
+                    name={modalType === "error" ? "error" : "info"}
+                    size={48}
+                    color={
+                      modalType === "error" ? COLORS.danger : COLORS.primary
+                    }
+                    style={styles.modalIcon}
+                  />
+                  <Text style={styles.modalTitle}>{modalTitle}</Text>
+                  <Text style={styles.modalMessage}>{modalMessage}</Text>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowModal(false)}>
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.secondary]}
+                      style={styles.modalButtonGradient}>
+                      <Text style={styles.modalButtonText}>OK</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
             </View>
-          ) : (
-            <View>
-              <InfoRow
-                label="First Name"
-                value={userProfile.firstName}
-              />
-              <InfoRow
-                label="Last Name"
-                value={userProfile.lastName}
-              />
-              <InfoRow
-                label="Email"
-                value={userProfile.email}
-              />
-              <InfoRow
-                label="Age"
-                value={userProfile.age.toString()}
-              />
-              <InfoRow
-                label="Daily Step Goal"
-                value={`${userProfile.dailyStepGoal.toLocaleString()} steps`}
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App Settings</Text>
-          <SettingRow
-            icon="notifications"
-            label="Notifications"
-            value="On"
-            onPress={() =>
-              Alert.alert(
-                "Coming soon",
-                "Notification settings will be available soon."
-              )
-            }
-          />
-          <SettingRow
-            icon="language"
-            label="Language"
-            value="English"
-            onPress={() =>
-              Alert.alert(
-                "Coming soon",
-                "Language settings will be available soon."
-              )
-            }
-          />
-          <SettingRow
-            icon="color-lens"
-            label="Theme"
-            value="Light"
-            onPress={() =>
-              Alert.alert(
-                "Coming soon",
-                "Theme settings will be available soon."
-              )
-            }
-          />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <SettingRow
-            icon="info"
-            label="App Version"
-            value="1.0.0"
-          />
-          <SettingRow
-            icon="description"
-            label="Terms of Service"
-            onPress={() =>
-              Alert.alert(
-                "Coming soon",
-                "Terms of service will be available soon."
-              )
-            }
-          />
-          <SettingRow
-            icon="lock"
-            label="Privacy Policy"
-            onPress={() =>
-              Alert.alert(
-                "Coming soon",
-                "Privacy policy will be available soon."
-              )
-            }
-          />
-        </View>
-      </ScrollView>
+          </View>
+        </Modal>
+      </View>
     </>
   );
 }
@@ -259,7 +370,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </View>
   );
 }
-
 // Setting row component
 function SettingRow({
   icon,
@@ -301,105 +411,142 @@ function SettingRow({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: COLORS.darkBackground,
+  },
+  // Background elements
+  backgroundContainer: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  backgroundImage: {
+    width: "100%",
+    height: "100%",
+    opacity: 0.6,
+  },
+  scrollView: {
+    flex: 1,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
   },
   profileHeader: {
-    backgroundColor: "#fff",
-    paddingVertical: 24,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+  },
+  profileHeaderGradient: {
+    paddingVertical: SPACING.xl,
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
   },
   avatarContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#3498db",
+    marginBottom: SPACING.lg,
+    overflow: "hidden",
+  },
+  avatarGradient: {
+    width: "100%",
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
   },
   avatarText: {
     fontSize: 32,
-    fontWeight: "bold",
-    color: "#fff",
+    color: COLORS.white,
+    ...FONTS.bold,
   },
   username: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: FONTS.sizes.lg,
+    color: COLORS.white,
+    ...FONTS.bold,
     marginBottom: 4,
   },
   userEmail: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.darkMuted,
   },
   section: {
-    backgroundColor: "#fff",
-    marginTop: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+  },
+  sectionGradient: {
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: SPACING.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: FONTS.sizes.md,
+    ...FONTS.bold,
+    color: COLORS.white,
   },
   editButton: {
-    backgroundColor: "#f0f0f0",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
     borderRadius: 16,
+    overflow: "hidden",
+  },
+  editButtonGradient: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
   },
   editButtonText: {
-    color: "#3498db",
-    fontWeight: "500",
+    color: COLORS.white,
+    ...FONTS.medium,
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: COLORS.darkBorder,
   },
   infoLabel: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: FONTS.sizes.md,
+    color: COLORS.darkMuted,
+    ...FONTS.regular,
   },
   infoValue: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
+    ...FONTS.medium,
   },
   settingRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
+    borderBottomColor: COLORS.darkBorder,
   },
   settingIcon: {
     marginRight: 16,
+    color: COLORS.primary,
   },
   settingLabel: {
-    fontSize: 16,
-    color: "#333",
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
     flex: 1,
+    ...FONTS.regular,
   },
   settingValueContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   settingValue: {
-    fontSize: 16,
-    color: "#666",
+    fontSize: FONTS.sizes.md,
+    color: COLORS.darkMuted,
     marginRight: 8,
+    ...FONTS.medium,
   },
   editForm: {
     marginBottom: 16,
@@ -408,28 +555,90 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: FONTS.sizes.sm,
     marginBottom: 6,
-    color: "#666",
+    color: COLORS.darkMuted,
+    ...FONTS.medium,
   },
   input: {
-    backgroundColor: "#f9f9f9",
+    backgroundColor: COLORS.darkBackground,
     borderWidth: 1,
-    borderColor: "#e0e0e0",
-    borderRadius: 8,
+    borderColor: COLORS.darkBorder,
+    borderRadius: 12,
     padding: 12,
-    fontSize: 16,
+    fontSize: FONTS.sizes.md,
+    color: COLORS.white,
+    ...FONTS.regular,
   },
   saveButton: {
-    backgroundColor: "#3498db",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
+    borderRadius: 12,
+    overflow: "hidden",
     marginTop: 8,
   },
+  saveButtonGradient: {
+    paddingVertical: 12,
+    alignItems: "center",
+  },
   saveButtonText: {
-    color: "#fff",
-    fontWeight: "600",
+    color: COLORS.white,
+    fontSize: FONTS.sizes.md,
+    ...FONTS.bold,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SPACING.lg,
+  },
+  modalContainer: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+  },
+  modalGradient: {
+    padding: SPACING.xl,
+  },
+  modalContent: {
+    alignItems: "center",
+  },
+  modalIcon: {
+    marginBottom: SPACING.lg,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: COLORS.white,
+    marginBottom: SPACING.md,
+    textAlign: "center",
+  },
+  modalMessage: {
     fontSize: 16,
+    color: COLORS.darkMuted,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: SPACING.xl,
+  },
+  modalButton: {
+    borderRadius: 12,
+    overflow: "hidden",
+    minWidth: 100,
+  },
+  modalButtonGradient: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    alignItems: "center",
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
+  },
+  bottomSpacing: {
+    height: SPACING.lg, // Extra space at bottom
   },
 });

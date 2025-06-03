@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   StyleSheet,
   View,
@@ -97,7 +97,7 @@ export default function HomeScreen() {
   };
 
   // Daily motivation logic (random but deterministic per day, leak-proof)
-  const getDailyMotivation = () => {
+  const dailyMotivation = useMemo(() => {
     // YYYY-MM-DD string for today using local date to avoid timezone issues
     const today = new Date();
     const dateString = `${today.getFullYear()}-${(today.getMonth() + 1)
@@ -111,16 +111,16 @@ export default function HomeScreen() {
     }
     const index = Math.abs(hash) % MOTIVATION_TIPS.length;
     return MOTIVATION_TIPS[index];
-  };
+  }, []);
 
   // Get greeting based on time of day
-  const getGreeting = () => {
+  const greeting = useMemo(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return "Good morning";
     if (hour >= 12 && hour < 18) return "Good afternoon";
     if (hour >= 18 && hour < 22) return "Good evening";
     return "Good night";
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -149,13 +149,15 @@ export default function HomeScreen() {
         {/* Welcome section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>
-            {getGreeting()}, {userProfile?.firstName || "there"}
+            {greeting}, {userProfile?.firstName || "there"}
           </Text>
           <Text style={styles.welcomeSubtitle}>You step, we sync.</Text>
         </View>
 
         {/* Weather widget */}
-        <WeatherWidget />
+        <View style={styles.weatherSpacing}>
+          <WeatherWidget />
+        </View>
 
         {/* Today's stats card */}
         <View style={styles.statsCard}>
@@ -202,6 +204,14 @@ export default function HomeScreen() {
             <View style={styles.statsDetails}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
+                  {userProfile?.dailyStepGoal
+                    ? formatNumber(userProfile.dailyStepGoal)
+                    : "-"}
+                </Text>
+                <Text style={styles.statLabel}>goal</Text>
+              </View>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
                   {(goalProgress * 100).toFixed(0)}%
                 </Text>
                 <Text style={styles.statLabel}>of goal</Text>
@@ -220,22 +230,6 @@ export default function HomeScreen() {
                 </Text>
                 <Text style={styles.statLabel}>calories</Text>
               </View>
-
-              <View style={styles.statItem}>
-                <View style={styles.streakValue}>
-                  <Ionicons
-                    name="flame"
-                    size={14}
-                    color={COLORS.warning}
-                  />
-                  <Text style={styles.streakText}>
-                    {userProfile?.dailyStepGoal
-                      ? Math.floor(todaySteps / userProfile.dailyStepGoal)
-                      : 0}
-                  </Text>
-                </View>
-                <Text style={styles.statLabel}>streak</Text>
-              </View>
             </View>
           </LinearGradient>
         </View>
@@ -248,8 +242,7 @@ export default function HomeScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}>
             <Text style={styles.motivationTitle}>TODAY'S MOTIVATION:</Text>
-            <Text
-              style={styles.motivationText}>{`"${getDailyMotivation()}"`}</Text>
+            <Text style={styles.motivationText}>{`"${dailyMotivation}"`}</Text>
           </LinearGradient>
         </View>
       </ScrollView>
@@ -282,7 +275,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: SPACING.xl,
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    paddingBottom: SPACING.xxl,
   },
 
   // Welcome section
@@ -297,7 +290,7 @@ const styles = StyleSheet.create({
   welcomeSubtitle: {
     color: COLORS.darkMuted,
     marginTop: SPACING.xs,
-    fontFamily: FONTS.regular.fontFamily
+    fontFamily: FONTS.regular.fontFamily,
   },
 
   // Stats card
@@ -373,16 +366,6 @@ const styles = StyleSheet.create({
     fontSize: FONTS.sizes.xs,
     color: COLORS.darkMuted,
   },
-  streakValue: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  streakText: {
-    fontSize: FONTS.sizes.md,
-    color: COLORS.warning,
-    fontWeight: "600",
-    marginLeft: 2,
-  },
   //Motivatiion card title
   motivationTitle: {
     fontSize: FONTS.sizes.md,
@@ -400,5 +383,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontStyle: "italic",
     paddingVertical: SPACING.sm,
+  },
+  weatherSpacing: {
+    marginBottom: SPACING.md,
   },
 });

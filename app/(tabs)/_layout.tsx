@@ -138,6 +138,14 @@ export default function TabLayout() {
               color={color}
             />
           ),
+          headerRight: () => (
+            <Ionicons
+              name="person-outline"
+              size={24}
+              color={COLORS.primary}
+              style={{ marginRight: 15 }}
+            />
+          ),
         }}
       />
     </Tabs>
