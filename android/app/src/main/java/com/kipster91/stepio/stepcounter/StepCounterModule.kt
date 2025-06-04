@@ -224,24 +224,6 @@ class StepCounterModule(reactContext: ReactApplicationContext) : ReactContextBas
         // Required for RN 0.65+
     }
     
-    // Test method to simulate step events for debugging
-    @ReactMethod
-    fun simulateSteps(stepsToAdd: Int, promise: Promise) {
-        try {
-            val service = StepCounterService.getInstance()
-            
-            if (service != null) {
-                // Simulate adding steps through a test interface
-                service.addTestSteps(stepsToAdd)
-                promise.resolve(true)
-            } else {
-                promise.reject("SERVICE_NOT_RUNNING", "Step counter service is not running")
-            }
-        } catch (e: Exception) {
-            promise.reject("ERROR_SIMULATING_STEPS", e.message, e)
-        }
-    }
-    
     // Rate-limited event counter to prevent too many events going to JS
     private var lastEventTime = 0L
     private val MIN_EVENT_INTERVAL = 250L // ms

@@ -11,11 +11,12 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Location from "expo-location";
 import { COLORS, FONTS, SPACING, GRADIENTS } from "../styles/theme";
+import Constants from "expo-constants";
 
 // Type definitions for our weather data
 export interface WeatherData {
   temperature: number;
-  weatherCode: number;
+  weatherCondition: string;
   description: string;
   feelsLike: number;
   windSpeed: number;
@@ -23,6 +24,7 @@ export interface WeatherData {
   location: string;
   maxTemp: number;
   minTemp: number;
+  iconUri?: string;
 }
 
 // Define a type for valid Ionicons names to be used in the weather map
@@ -36,39 +38,31 @@ type WeatherIconName =
   | "thunderstorm"
   | "help-outline";
 
-// Map of weather codes from Open-Meteo to weather icons and descriptions
-export const weatherCodeMap: Record<
-  number,
+// Map of Google Weather API condition types to weather icons and descriptions
+export const weatherConditionMap: Record<
+  string,
   { icon: WeatherIconName; description: string }
 > = {
-  0: { icon: "sunny", description: "Clear sky" },
-  1: { icon: "partly-sunny", description: "Mainly clear" },
-  2: { icon: "partly-sunny", description: "Partly cloudy" },
-  3: { icon: "cloudy", description: "Cloudy" },
-  45: { icon: "cloud", description: "Fog" },
-  48: { icon: "cloud", description: "Frost fog" },
-  51: { icon: "rainy", description: "Light drizzle" },
-  53: { icon: "rainy", description: "Moderate drizzle" },
-  55: { icon: "rainy", description: "Dense drizzle" },
-  56: { icon: "rainy", description: "Light freezing drizzle" },
-  57: { icon: "rainy", description: "Dense freezing drizzle" },
-  61: { icon: "rainy", description: "Slight rain" },
-  63: { icon: "rainy", description: "Moderate rain" },
-  65: { icon: "rainy", description: "Heavy rain" },
-  66: { icon: "rainy", description: "Light freezing rain" },
-  67: { icon: "rainy", description: "Heavy freezing rain" },
-  71: { icon: "snow", description: "Slight snowfall" },
-  73: { icon: "snow", description: "Moderate snowfall" },
-  75: { icon: "snow", description: "Heavy snowfall" },
-  77: { icon: "snow", description: "Snow grains" },
-  80: { icon: "rainy", description: "Slight rain showers" },
-  81: { icon: "rainy", description: "Moderate rain showers" },
-  82: { icon: "rainy", description: "Violent rain showers" },
-  85: { icon: "snow", description: "Slight snow showers" },
-  86: { icon: "snow", description: "Heavy snow showers" },
-  95: { icon: "thunderstorm", description: "Thunderstorm" },
-  96: { icon: "thunderstorm", description: "Thunderstorm with slight hail" },
-  99: { icon: "thunderstorm", description: "Thunderstorm with heavy hail" },
+  CLEAR: { icon: "sunny", description: "Clear sky" },
+  MOSTLY_CLEAR: { icon: "partly-sunny", description: "Clear with periodic clouds" },
+  PARTLY_CLOUDY: { icon: "partly-sunny", description: "Partly cloudy" },
+  CLOUDY: { icon: "cloudy", description: "Cloudy" },
+  FOG: { icon: "cloud", description: "Fog" },
+  HAZE: { icon: "cloud", description: "Haze" },
+  MIST: { icon: "cloud", description: "Mist" },
+  DRIZZLE: { icon: "rainy", description: "Drizzle" },
+  RAIN: { icon: "rainy", description: "Rain" },
+  SHOWERS: { icon: "rainy", description: "Showers" },
+  SNOW: { icon: "snow", description: "Snow" },
+  SLEET: { icon: "snow", description: "Sleet" },
+  HAIL: { icon: "snow", description: "Hail" },
+  THUNDERSTORM: { icon: "thunderstorm", description: "Thunderstorm" },
+  TORNADO: { icon: "thunderstorm", description: "Tornado" },
+  HURRICANE: { icon: "thunderstorm", description: "Hurricane" },
+  TROPICAL_STORM: { icon: "thunderstorm", description: "Tropical storm" },
+  WINDY: { icon: "cloudy", description: "Windy" },
+  DUST: { icon: "cloud", description: "Dust" },
+  SMOKE: { icon: "cloud", description: "Smoke" },
 };
 
 interface WeatherWidgetProps {
@@ -92,11 +86,18 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       opacity: shimmerAnim.value,
     };
   });
-
   // Function to get location and fetch weather data
   const getWeatherData = async () => {
     try {
-      setLoading(true);
+      setLoading(true); // Get Google API key from environment
+      const apiKey =
+        Constants.expoConfig?.extra?.googleApiKey || process.env.GOOGLE_API_KEY;
+
+      if (!apiKey) {
+        setError("Google API key not configured");
+        setLoading(false);
+        return;
+      }
 
       // Request location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -109,15 +110,18 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       // Get current location with low accuracy and longer cache time
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Lowest,
-        // The maxAge property isn't supported in LocationOptions type
-        // Using just low accuracy which is sufficient for weather data
       });
+      // Fetch weather data from Google Weather API
+      const url = `https://weather.googleapis.com/v1/currentConditions:lookup?key=${apiKey}&location.latitude=${location.coords.latitude}&location.longitude=${location.coords.longitude}`;
 
-      // Fetch weather data from open-meteo API with additional parameters
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${location.coords.latitude}&longitude=${location.coords.longitude}&current=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`
-      );
+      const response = await fetch(url);
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `HTTP error! status: ${response.status}, message: ${errorText}`
+        );
+      }
       const data = await response.json();
 
       // Get city/location name using reverse geocoding
@@ -132,20 +136,30 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
         geocodeResponse[0]?.subregion ||
         "Unknown Location";
 
-      if (data && data.current) {
+      if (data && data.temperature) {
+        const weatherConditionType = data.weatherCondition?.type || "CLEAR";
         const weatherData: WeatherData = {
-          temperature: data.current.temperature_2m,
-          weatherCode: data.current.weather_code,
+          temperature: Math.round(data.temperature.degrees),
+          weatherCondition: weatherConditionType,
           description:
-            weatherCodeMap[data.current.weather_code]?.description || "Unknown",
-          feelsLike: data.current.apparent_temperature,
-          windSpeed: data.current.wind_speed_10m,
-          humidity: data.current.relative_humidity_2m,
+            data.weatherCondition?.description?.text ||
+            weatherConditionMap[weatherConditionType]?.description ||
+            "Unknown",
+          feelsLike: Math.round(
+            data.feelsLikeTemperature?.degrees || data.temperature.degrees
+          ),
+          windSpeed: Math.round(data.wind?.speed?.value || 0),
+          humidity: data.relativeHumidity || 0,
           location: locationName,
-          maxTemp:
-            data.daily?.temperature_2m_max?.[0] || data.current.temperature_2m,
-          minTemp:
-            data.daily?.temperature_2m_min?.[0] || data.current.temperature_2m,
+          maxTemp: Math.round(
+            data.currentConditionsHistory?.maxTemperature?.degrees ||
+              data.temperature.degrees
+          ),
+          minTemp: Math.round(
+            data.currentConditionsHistory?.minTemperature?.degrees ||
+              data.temperature.degrees
+          ),
+          iconUri: data.weatherCondition?.iconBaseUri,
         };
 
         setWeather(weatherData);
@@ -157,9 +171,10 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       } else {
         setError("Could not fetch weather data");
       }
-    } catch (err) {
-      console.error("Weather fetch error:", err);
-      setError("Error fetching weather data");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      setError(`Error fetching weather data: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -190,11 +205,12 @@ export const WeatherWidget: React.FC<WeatherWidgetProps> = ({
       }
     };
   }, []);
-
-  // Get weather icon and description based on weather code
+  // Get weather icon and description based on weather condition
   const getWeatherIcon = (): WeatherIconName => {
     if (!weather) return "help-outline";
-    return weatherCodeMap[weather.weatherCode]?.icon || "help-outline";
+    return (
+      weatherConditionMap[weather.weatherCondition]?.icon || "help-outline"
+    );
   };
 
   if (error) {

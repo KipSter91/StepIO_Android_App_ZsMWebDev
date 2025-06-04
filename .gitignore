@@ -30,6 +30,7 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
@@ -43,3 +44,41 @@ expo-env.d.ts
 #other files
 stepio_copilot_steps.md
 android/
+
+# Android build and sensitive files exclusion
+android/app/build/
+android/build/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/app/debug.keystore
+android/app/release.keystore
+android/app/*.jks
+android/app/*.keystore
+android/app/*.pem
+android/app/*.p12
+android/app/*.p8
+android/app/*.key
+android/app/*.mobileprovision
+# Android Studio/IntelliJ project files
+android/.idea/
+android/.cxx/
+android/.DS_Store
+# Gradle wrapper and properties
+android/gradle/
+android/gradlew
+android/gradlew.bat
+android/gradle.properties
+# All generated files
+android/**/*.iml
+android/**/*.apk
+android/**/*.ap_*
+android/**/*.dex
+android/**/*.class
+android/**/*.log
+android/**/*.tmp
+android/**/*.lock
+android/**/*.sha
+# Allow source code and manifest to be committed
+!android/app/src/**
+!android/app/AndroidManifest.xml

@@ -1,47 +1,32 @@
-/**
- * StepIO mobile app color theme and style definitions
- */
-
 export const COLORS = {
-  // Base colors
-  primary: "#00FFCC", // Main app color - bright teal
-  secondary: "#B45FFF", // Secondary color - purple
-  accent: "#FFD700", // cyber gold
+  primary: "#00FFCC",
+  secondary: "#B45FFF",
+  accent: "#FFD700",
   white: "#FFFFFF",
   black: "#000000",
-
-  // Dark mode (primary theme for cyberpunk aesthetic)
-  darkBackground: "#0F1420", // Primary dark background
+  darkBackground: "#0F1420",
   darkForeground: "#f8f9fa",
-  darkCard: "#131824", // Slightly lighter dark background for cards
+  darkCard: "#131824",
   darkBorder: "#2B3044",
-  darkMuted: "#8A94A6", // Muted text on dark backgrounds
-  darkHighlight: "#1D2235", // subtle highlight for selections
-
-  // Neon accents
-  neonBlue: "#5499FF", // Blue for accent
+  darkMuted: "#8A94A6",
+  darkHighlight: "#1D2235",
+  neonBlue: "#5499FF",
   neonPink: "#FF0099",
-  neonPurple: "#B45FFF", // Purple for accent
+  neonPurple: "#B45FFF",
   neonGreen: "#00FF66",
-
-  // Functional colors
-  success: "#4ADE80", // Green for success states
-  warning: "#FF9F0A", // Orange for warning states
-  danger: "#FF3366", // neon red
-  info: "#42A5F5", // electric blue
-  destructive: "#FF3366", // same as danger
-  border: "#2B3044", // same as darkBorder for consistency
-  error: "#FF4A6F", // Red for error states
-
-  // Story progression colors
-  storyUnlocked: "#00FFCC", // matching primary
-  storyLocked: "#333344", // muted dark
-  xpPrimary: "#FF00FF", // matching secondary
-  xpBackground: "#1D2235", // dark background for XP bar
-
-  // Additional colors
+  success: "#4ADE80",
+  warning: "#FF9F0A",
+  danger: "#FF3366",
+  info: "#42A5F5",
+  destructive: "#FF3366",
+  border: "#2B3044",
+  error: "#FF4A6F",
+  storyUnlocked: "#00FFCC",
+  storyLocked: "#333344",
+  xpPrimary: "#FF00FF",
+  xpBackground: "#1D2235",
   transparent: "transparent",
-  overlay: "rgba(15, 20, 32, 0.9)", // Overlay for modals
+  overlay: "rgba(15, 20, 32, 0.9)",
 };
 
 export const GRADIENTS = {

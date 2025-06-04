@@ -385,37 +385,6 @@ class StepCounterService : Service(), SensorEventListener {
         return isTracking
     }
     
-    // Test method to simulate step events for debugging
-    fun addTestSteps(stepsToAdd: Int) {
-        val currentTime = System.currentTimeMillis()
-        todaySteps += stepsToAdd
-        pendingStepsToSave += stepsToAdd
-        
-        // Check if we should save these steps
-        if (currentTime - lastSaveTime > SAVE_INTERVAL) {
-            val stepTimestamp = StepTimestamp(
-                timestamp = currentTime,
-                steps = pendingStepsToSave,
-                cumulativeSteps = todaySteps
-            )
-            saveStepTimestamps(stepTimestamp)
-            lastSaveTime = currentTime
-            pendingStepsToSave = 0
-        }
-        
-        // Update preferences
-        sharedPreferences?.edit()?.apply {
-            putInt(StepCounterModule.STEPS_STORAGE_KEY, todaySteps)
-            apply()
-        }
-        
-        // Send broadcast
-        broadcastStepUpdate(todaySteps)
-        
-        // Update notification
-        updateNotification()
-    }
-    
     // Calculate calories burned based on step count
     // Average calorie burn is about 0.04 calories per step
     private fun calculateCaloriesBurned(steps: Int): Float {

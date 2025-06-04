@@ -1,4 +1,6 @@
 // app.config.js
+import "dotenv/config";
+
 export default ({ config }) => ({
   ...config,
   name: "StepIO",
@@ -50,5 +52,6 @@ export default ({ config }) => ({
     eas: {
       projectId: "5e9880ad-dc2f-477d-a29c-1f15d7158d81",
     },
+    googleApiKey: process.env.GOOGLE_API_KEY,
   },
 });
