@@ -32,6 +32,9 @@ export default function ProfileScreen() {
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"error" | "info">("info");
+  // NEW: Modal for Terms and Privacy
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const showCustomModal = (
     title: string,
@@ -63,19 +66,19 @@ export default function ProfileScreen() {
       return;
     }
 
-    if (!age.trim() || isNaN(Number(age)) || Number(age) <= 0) {
-      showCustomModal("Invalid age", "Please enter a valid age.", "error");
+    if (!age.trim() || isNaN(Number(age)) || Number(age) <= 0 || Number(age) > 120) {
+      showCustomModal("Invalid age", "Please enter a valid age. (1-120)", "error");
       return;
     }
 
     if (
       !dailyStepGoal.trim() ||
       isNaN(Number(dailyStepGoal)) ||
-      Number(dailyStepGoal) < 1000
+      Number(dailyStepGoal) < 1000 || Number(dailyStepGoal) > 50000
     ) {
       showCustomModal(
         "Invalid step goal",
-        "Please enter a valid step goal (minimum 1000).",
+        "Please enter a valid step goal (minimum 1000, maximum 50000).",
         "error"
       );
       return;
@@ -247,46 +250,6 @@ export default function ProfileScreen() {
             <LinearGradient
               colors={GRADIENTS.storyCard}
               style={styles.sectionGradient}>
-              <Text style={styles.sectionTitle}>App Settings</Text>
-              <SettingRow
-                icon="notifications"
-                label="Notifications"
-                value="On"
-                onPress={() =>
-                  showCustomModal(
-                    "Coming soon",
-                    "Notification settings will be available soon."
-                  )
-                }
-              />
-              <SettingRow
-                icon="language"
-                label="Language"
-                value="English"
-                onPress={() =>
-                  showCustomModal(
-                    "Coming soon",
-                    "Language settings will be available soon."
-                  )
-                }
-              />
-              <SettingRow
-                icon="color-lens"
-                label="Theme"
-                value="Light"
-                onPress={() =>
-                  showCustomModal(
-                    "Coming soon",
-                    "Theme settings will be available soon."
-                  )
-                }
-              />
-            </LinearGradient>
-          </View>
-          <View style={styles.section}>
-            <LinearGradient
-              colors={GRADIENTS.storyCard}
-              style={styles.sectionGradient}>
               <Text style={styles.sectionTitle}>About</Text>
               <SettingRow
                 icon="info"
@@ -296,22 +259,12 @@ export default function ProfileScreen() {
               <SettingRow
                 icon="description"
                 label="Terms of Service"
-                onPress={() =>
-                  showCustomModal(
-                    "Coming soon",
-                    "Terms of service will be available soon."
-                  )
-                }
+                onPress={() => setShowTermsModal(true)}
               />
               <SettingRow
                 icon="lock"
                 label="Privacy Policy"
-                onPress={() =>
-                  showCustomModal(
-                    "Coming soon",
-                    "Privacy policy will be available soon."
-                  )
-                }
+                onPress={() => setShowPrivacyModal(true)}
               />
             </LinearGradient>
           </View>
@@ -345,6 +298,82 @@ export default function ProfileScreen() {
                   <TouchableOpacity
                     style={styles.modalButton}
                     onPress={() => setShowModal(false)}>
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.secondary]}
+                      style={styles.modalButtonGradient}>
+                      <Text style={styles.modalButtonText}>OK</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </View>
+          </View>
+        </Modal>
+        {/* Terms of Service Modal */}
+        <Modal
+          visible={showTermsModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowTermsModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <LinearGradient
+                colors={GRADIENTS.storyCard}
+                style={styles.modalGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}>
+                <View style={styles.modalContent}>
+                  <MaterialIcons
+                    name="description"
+                    size={48}
+                    color={COLORS.primary}
+                    style={styles.modalIcon}
+                  />
+                  <Text style={styles.modalTitle}>Terms of Service</Text>
+                  <Text style={styles.modalMessage}>
+                    StepIO is a free application and is the sole property of its creator, Zsolt Márku. You may use the app free of charge, but any misuse or unauthorized distribution may have legal consequences. The app is provided as-is, without any warranty. Use at your own risk.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowTermsModal(false)}>
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.secondary]}
+                      style={styles.modalButtonGradient}>
+                      <Text style={styles.modalButtonText}>OK</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </View>
+          </View>
+        </Modal>
+        {/* Privacy Policy Modal */}
+        <Modal
+          visible={showPrivacyModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowPrivacyModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <LinearGradient
+                colors={GRADIENTS.storyCard}
+                style={styles.modalGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}>
+                <View style={styles.modalContent}>
+                  <MaterialIcons
+                    name="lock"
+                    size={48}
+                    color={COLORS.primary}
+                    style={styles.modalIcon}
+                  />
+                  <Text style={styles.modalTitle}>Privacy Policy</Text>
+                  <Text style={styles.modalMessage}>
+                    StepIO does not collect or store any personal data. All your information is saved only on your device and is never shared or uploaded anywhere. You have full control over your data.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => setShowPrivacyModal(false)}>
                     <LinearGradient
                       colors={[COLORS.primary, COLORS.secondary]}
                       style={styles.modalButtonGradient}>

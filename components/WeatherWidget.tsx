@@ -44,13 +44,17 @@ export const weatherConditionMap: Record<
   { icon: WeatherIconName; description: string }
 > = {
   CLEAR: { icon: "sunny", description: "Clear sky" },
-  MOSTLY_CLEAR: { icon: "partly-sunny", description: "Clear with periodic clouds" },
+  MOSTLY_CLEAR: {
+    icon: "partly-sunny",
+    description: "Clear with periodic clouds",
+  },
   PARTLY_CLOUDY: { icon: "partly-sunny", description: "Partly cloudy" },
   CLOUDY: { icon: "cloudy", description: "Cloudy" },
   FOG: { icon: "cloud", description: "Fog" },
   HAZE: { icon: "cloud", description: "Haze" },
   MIST: { icon: "cloud", description: "Mist" },
   DRIZZLE: { icon: "rainy", description: "Drizzle" },
+  LIGHT_RAIN: { icon: "rainy", description: "Light rain" },
   RAIN: { icon: "rainy", description: "Rain" },
   SHOWERS: { icon: "rainy", description: "Showers" },
   SNOW: { icon: "snow", description: "Snow" },
@@ -63,6 +67,26 @@ export const weatherConditionMap: Record<
   WINDY: { icon: "cloudy", description: "Windy" },
   DUST: { icon: "cloud", description: "Dust" },
   SMOKE: { icon: "cloud", description: "Smoke" },
+  OVERCAST: { icon: "cloudy", description: "Overcast" },
+  SCATTERED_CLOUDS: { icon: "partly-sunny", description: "Scattered clouds" },
+  BROKEN_CLOUDS: { icon: "cloudy", description: "Broken clouds" },
+  FREEZING_RAIN: { icon: "rainy", description: "Freezing rain" },
+  HEAVY_RAIN: { icon: "rainy", description: "Heavy rain" },
+  HEAVY_SNOW: { icon: "snow", description: "Heavy snow" },
+  LIGHT_SNOW: { icon: "snow", description: "Light snow" },
+  ICE: { icon: "snow", description: "Ice" },
+  BLIZZARD: { icon: "snow", description: "Blizzard" },
+  SAND: { icon: "cloud", description: "Sand" },
+  ASH: { icon: "cloud", description: "Volcanic ash" },
+  SQUALL: { icon: "thunderstorm", description: "Squall" },
+  FUNNEL_CLOUD: { icon: "thunderstorm", description: "Funnel cloud" },
+  TROPICAL_DEPRESSION: {
+    icon: "thunderstorm",
+    description: "Tropical depression",
+  },
+  COLD: { icon: "cloud", description: "Cold" },
+  HOT: { icon: "sunny", description: "Hot" },
+  UNKNOWN: { icon: "help-outline", description: "Unknown" },
 };
 
 interface WeatherWidgetProps {
