@@ -3,7 +3,6 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { COLORS } from "../../styles/theme";
 
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
   name: React.ComponentProps<typeof Ionicons>["name"];
   color: string;
@@ -45,7 +44,6 @@ export default function TabLayout() {
           fontWeight: "600",
           color: COLORS.white,
         },
-        // Egyszerű fade animáció
         animation: "fade",
       }}>
       <Tabs.Screen

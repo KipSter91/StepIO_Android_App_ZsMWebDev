@@ -30,12 +30,6 @@ export const COLORS = {
 };
 
 export const GRADIENTS = {
-  primaryToSecondary: ["#00FFCC", "#FF00FF"] as const,
-  darkGlass: ["rgba(19, 24, 36, 0.8)", "rgba(11, 15, 25, 0.8)"] as const,
-  cyberpunkOverlay: [
-    "rgba(0, 255, 204, 0.1)",
-    "rgba(255, 0, 255, 0.05)",
-  ] as const,
   storyCard: ["rgba(19, 24, 36, 0.9)", "rgba(29, 34, 53, 0.9)"] as const,
 } as const;
 

@@ -14,7 +14,7 @@ import useStepStore from "../../src/store/useStepStore";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
+import { COLORS, FONTS, SPACING } from "../../styles/theme";
 
 const STEP_GOALS = [5000, 7500, 10000, 12000, 15000, 20000];
 
@@ -68,10 +68,7 @@ export default function DailyTargetScreen() {
           </Text>
           <View style={styles.goalsContainer}>
             {STEP_GOALS.map((goal, _unused) => (
-              <Animated.View
-                key={goal}
-                // entering={SlideInRight.delay(index * 100).duration(400)} // Animation can be added back if desired
-              >
+              <Animated.View key={goal}>
                 <TouchableOpacity
                   style={[
                     styles.goalItem,
@@ -93,7 +90,6 @@ export default function DailyTargetScreen() {
                       name="checkmark-circle"
                       size={20}
                       color={COLORS.primary}
-                      style={styles.checkIcon}
                     />
                   )}
                 </TouchableOpacity>
@@ -114,10 +110,8 @@ export default function DailyTargetScreen() {
             style={styles.button}
             onPress={handleComplete}>
             <LinearGradient
-              colors={GRADIENTS.primaryToSecondary}
-              style={styles.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}>
+              colors={[COLORS.primary, COLORS.secondary]}
+              style={styles.buttonGradient}>
               <Text style={styles.buttonText}>Complete Setup</Text>
               <Ionicons
                 name="checkmark"
@@ -156,7 +150,7 @@ const styles = StyleSheet.create({
   },
   backButtonContainer: {
     position: "absolute",
-    top: SPACING.xl * 1.2, // Még lejjebb, kb. 36-40px, platformfüggetlenül
+    top: SPACING.xl * 1.2,
     left: SPACING.md,
     zIndex: 1,
   },
@@ -199,10 +193,10 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   goalItem: {
-    flexDirection: "row", // Align text and checkmark
-    justifyContent: "space-between", // Space out text and checkmark
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: SPACING.lg, // Increased padding
+    paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.md,
     backgroundColor: COLORS.darkCard,
     borderRadius: 12,
@@ -212,7 +206,7 @@ const styles = StyleSheet.create({
   },
   selectedGoal: {
     borderColor: COLORS.primary,
-    backgroundColor: "rgba(0, 255, 204, 0.1)", // Accent color with opacity
+    backgroundColor: "rgba(0, 255, 204, 0.1)",
   },
   goalText: {
     fontSize: FONTS.sizes.md,
@@ -221,9 +215,6 @@ const styles = StyleSheet.create({
   },
   selectedGoalText: {
     color: COLORS.primary,
-  },
-  checkIcon: {
-    // Styles for the check icon if needed, already positioned by flexbox
   },
   goalDescriptionContainer: {
     flexDirection: "row",
@@ -238,10 +229,10 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 50,
-    borderRadius: 25,
+    borderRadius: 16,
     overflow: "hidden",
     width: "100%",
-    maxWidth: 300, // Consistent button width
+    maxWidth: 300,
   },
   buttonGradient: {
     flex: 1,

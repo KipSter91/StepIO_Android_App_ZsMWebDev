@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
   SafeAreaView,
 } from "react-native";
 import { router } from "expo-router";
@@ -17,7 +16,7 @@ import useStepStore from "../../src/store/useStepStore";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
+import { COLORS, FONTS, SPACING } from "../../styles/theme";
 
 export default function UserInfoScreen() {
   const { updateUserProfile } = useStepStore();
@@ -32,7 +31,7 @@ export default function UserInfoScreen() {
     if (
       !age.trim() ||
       isNaN(Number(age)) ||
-      Number(age) <= 0 ||
+      Number(age) <= 5 ||
       Number(age) >= 120
     )
       return false;
@@ -40,35 +39,12 @@ export default function UserInfoScreen() {
   };
 
   const handleContinue = () => {
-    if (!firstName.trim()) {
-      Alert.alert("Missing Information", "Please enter your first name.");
-      return;
-    }
-    if (!email.trim()) {
-      Alert.alert("Missing Information", "Please enter your email address.");
-      return;
-    }
-    if (!validateEmail(email)) {
-      Alert.alert("Invalid Email", "Please enter a valid email address.");
-      return;
-    }
-    if (
-      !age.trim() ||
-      isNaN(Number(age)) ||
-      Number(age) <= 0 ||
-      Number(age) >= 120
-    ) {
-      Alert.alert("Invalid Age", "Please enter a valid age (1-119).");
-      return;
-    }
-
     updateUserProfile({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.trim(),
       age: Number(age),
     });
-
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.push("/(onboarding)/daily-target");
   };
@@ -119,10 +95,6 @@ export default function UserInfoScreen() {
             </View>
 
             <Text style={styles.title}>Tell us about yourself</Text>
-            <Text style={styles.subtitle}>
-              We'll use this information to personalize your experience
-            </Text>
-
             <View style={styles.form}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>First Name</Text>
@@ -186,12 +158,10 @@ export default function UserInfoScreen() {
                 <LinearGradient
                   colors={
                     isFormValid()
-                      ? GRADIENTS.primaryToSecondary
-                      : [COLORS.darkMuted, COLORS.darkMuted]
-                  } // Changed to COLORS.darkMuted
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}>
+                      ? [COLORS.primary, COLORS.secondary]
+                      : [COLORS.darkMuted, COLORS.darkBorder]
+                  }
+                  style={styles.buttonGradient}>
                   <Text style={styles.buttonText}>Continue</Text>
                   <Ionicons
                     name="arrow-forward"
@@ -228,7 +198,7 @@ const styles = StyleSheet.create({
   },
   backButtonContainer: {
     position: "absolute",
-    top: SPACING.xl * 1.2, // Ugyanaz a pozíció mint a daily-targeten
+    top: SPACING.xl * 1.2,
     left: SPACING.md,
     zIndex: 1,
   },
@@ -246,23 +216,17 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.darkBorder, // Adjusted color
+    backgroundColor: COLORS.darkBorder,
     marginHorizontal: SPACING.xs / 2,
   },
   activeProgressDot: {
     backgroundColor: COLORS.primary,
   },
   title: {
-    fontSize: FONTS.sizes.xl, // Adjusted size
-    fontWeight: "700", // Adjusted weight
+    fontSize: FONTS.sizes.xl,
+    fontWeight: "700",
     color: COLORS.white,
-    marginBottom: SPACING.sm, // Adjusted margin
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: FONTS.sizes.sm, // Adjusted size
-    color: COLORS.darkMuted,
-    marginBottom: SPACING.xl, // Adjusted margin
+    marginBottom: SPACING.xl,
     textAlign: "center",
   },
   form: {
@@ -278,24 +242,25 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xs,
   },
   input: {
-    backgroundColor: COLORS.darkCard, // Adjusted background
+    backgroundColor: COLORS.darkCard,
     borderWidth: 1,
-    borderColor: COLORS.darkBorder, // Adjusted border color
+    borderColor: COLORS.darkBorder,
     borderRadius: 12,
     color: COLORS.white,
     padding: SPACING.md,
     fontSize: FONTS.sizes.md,
   },
   buttonContainer: {
-    marginTop: SPACING.md, // Adjusted margin
+    marginTop: SPACING.md,
   },
   button: {
     height: 50,
-    borderRadius: 25,
+    borderRadius: 16,
     overflow: "hidden",
+    width: "100%",
   },
   disabledButton: {
-    opacity: 0.7, // Adjusted for better visibility of disabled state
+    opacity: 0.7,
   },
   buttonGradient: {
     flex: 1,

@@ -66,15 +66,25 @@ export default function ProfileScreen() {
       return;
     }
 
-    if (!age.trim() || isNaN(Number(age)) || Number(age) <= 0 || Number(age) > 120) {
-      showCustomModal("Invalid age", "Please enter a valid age. (1-120)", "error");
+    if (
+      !age.trim() ||
+      isNaN(Number(age)) ||
+      Number(age) <= 5 ||
+      Number(age) > 120
+    ) {
+      showCustomModal(
+        "Invalid age",
+        "Please enter a valid age. (6-120)",
+        "error"
+      );
       return;
     }
 
     if (
       !dailyStepGoal.trim() ||
       isNaN(Number(dailyStepGoal)) ||
-      Number(dailyStepGoal) < 1000 || Number(dailyStepGoal) > 50000
+      Number(dailyStepGoal) < 1000 ||
+      Number(dailyStepGoal) > 50000
     ) {
       showCustomModal(
         "Invalid step goal",
@@ -331,7 +341,16 @@ export default function ProfileScreen() {
                   />
                   <Text style={styles.modalTitle}>Terms of Service</Text>
                   <Text style={styles.modalMessage}>
-                    StepIO is a free application and is the sole property of its creator, Zsolt Márku. You may use the app free of charge, but any misuse or unauthorized distribution may have legal consequences. The app is provided as-is, without any warranty. Use at your own risk.
+                    StepIO is a free application created and owned by Zsolt
+                    Márku. This is the first version of the app and it is still
+                    under active development as a learning project. The app has
+                    been tested on a Samsung S23 Ultra and no major bugs or
+                    issues were encountered during testing. However, as devices
+                    and user environments may vary, occasional bugs or issues
+                    may still occur. You are welcome to use it free of charge,
+                    but any misuse or unauthorized distribution may have legal
+                    consequences. Thank you for your understanding and support
+                    as the app continues to improve.
                   </Text>
                   <TouchableOpacity
                     style={styles.modalButton}
@@ -369,7 +388,9 @@ export default function ProfileScreen() {
                   />
                   <Text style={styles.modalTitle}>Privacy Policy</Text>
                   <Text style={styles.modalMessage}>
-                    StepIO does not collect or store any personal data. All your information is saved only on your device and is never shared or uploaded anywhere. You have full control over your data.
+                    StepIO does not collect or store any personal data. All your
+                    information is saved only on your device and is never shared
+                    or uploaded anywhere. You have full control over your data.
                   </Text>
                   <TouchableOpacity
                     style={styles.modalButton}

@@ -9,9 +9,6 @@ import {
 const { NativeStepCounter } = NativeModules;
 const stepCounterEmitter = new NativeEventEmitter(NativeStepCounter);
 
-// Callback for step updates: steps, calories, timestamp
-// Callback for tracking status: isActive
-
 type StepUpdateCallback = (
   steps: number,
   calories?: number,

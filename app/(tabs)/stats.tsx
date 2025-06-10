@@ -56,7 +56,7 @@ const SimpleChart = React.memo(
 
     // Memoize expensive calculations
     const chartCalculations = useMemo(() => {
-      // Generate Y-axis labels (nice numbers, always 5 labels, maxValue at top or felette)
+      // Generate Y-axis labels (nice numbers, always 5 labels, maxValue at top or above)
       function getNiceChartMax(value: number) {
         if (value <= 0) return 1;
         const exponent = Math.floor(Math.log10(value));
@@ -189,7 +189,7 @@ const SimpleChart = React.memo(
             {yAxisLabels.map((value, index) => {
               const chartBarsHeight = 140;
               const percent = index / (yAxisLabelSlots - 1);
-              const topPx = percent * chartBarsHeight - 10; // ugyanaz, mint a grid line
+              const topPx = percent * chartBarsHeight - 10;
               return (
                 <Text
                   key={index}
@@ -215,10 +215,10 @@ const SimpleChart = React.memo(
             onLayout={(e) => setChartHeight(e.nativeEvent.layout.height)}>
             {/* Horizontal grid lines (no 0 line) */}
             {Array.from({ length: yAxisLabelSlots - 1 }).map((_, index) => {
-              // Számoljuk ki a top pozíciót pixelben, majd toljuk feljebb 8 pixellel
-              const chartBarsHeight = 140; // Ugyanaz, mint a styles.chartBars.height
+              // Calculate position based on index
+              const chartBarsHeight = 140;
               const percent = index / (yAxisLabelSlots - 1);
-              const topPx = percent * chartBarsHeight - 10; // 10px-el feljebb
+              const topPx = percent * chartBarsHeight - 10; // 10px for label height
               return (
                 <View
                   key={"hgrid-" + index}
@@ -398,7 +398,8 @@ export default function StatsScreen() {
       setDateRange(newRange);
       loadStatsData(newRange);
     }
-  }, [selectedRange]); // Helper function to generate date array for a given range
+  }, [selectedRange]);
+  // Helper function to generate date array for a given range
   const generateDateArray = useCallback((range: DateRange): Date[] => {
     const dates: Date[] = [];
     const currentDate = new Date(range.from);
@@ -541,7 +542,7 @@ export default function StatsScreen() {
         setPeriodChartData(periodData);
       }
     } catch (error) {
-      // Hiba esetén ne logoljunk, csak némán ne frissítsen
+      // In case of error, reset stats data
     }
   };
   const onRefresh = useCallback(async () => {
@@ -550,10 +551,6 @@ export default function StatsScreen() {
     setIsRefreshing(false);
   }, [dateRange]);
 
-  const handleDateRangeChange = useCallback((newRange: DateRange) => {
-    setDateRange(newRange);
-    loadStatsData(newRange);
-  }, []);
   useEffect(() => {
     loadStatsData(dateRange);
     const stepUpdateHandler = () => {
@@ -901,16 +898,16 @@ const styles = StyleSheet.create({
     height: 160,
   },
   yAxis: {
-    width: 15, // Még kisebb szélesség
+    width: 15,
     height: 140,
     justifyContent: "space-between",
     alignItems: "flex-end",
-    paddingRight: 0, // Nincs padding
-    marginRight: 2, // Minimális margin
+    paddingRight: 0,
+    marginRight: 2,
   },
   yAxisLabel: {
     ...FONTS.regular,
-    fontSize: 8, // Smaller font
+    fontSize: 8,
     color: COLORS.darkMuted,
     textAlign: "right",
   },
@@ -920,7 +917,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
     height: 140,
-    paddingLeft: SPACING.xs, // Adjunk vissza kis padding-et
+    paddingLeft: SPACING.xs,
     paddingRight: SPACING.xs,
   },
   barContainer: {

@@ -161,7 +161,7 @@ const ActivityItem = React.memo(
     const durationMs = (session.endTime || Date.now()) - session.startTime;
     const durationMins = Math.floor(durationMs / (1000 * 60));
 
-    // Use saved distance if available, otherwise estimate from steps
+    // Use saved distance if available, otherwise estimate from steps as fallback
     const distanceKm =
       typeof session.distance === "number"
         ? session.distance.toFixed(1)

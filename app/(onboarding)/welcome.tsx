@@ -13,7 +13,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { COLORS, FONTS, SPACING, GRADIENTS } from "../../styles/theme";
+import { COLORS, FONTS, SPACING } from "../../styles/theme";
 import { useStepStore } from "../../src/store/useStepStore";
 
 export default function WelcomeScreen() {
@@ -78,10 +78,8 @@ export default function WelcomeScreen() {
             style={styles.button}
             onPress={() => router.push("/(onboarding)/user-info")}>
             <LinearGradient
-              colors={GRADIENTS.primaryToSecondary}
-              style={styles.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}>
+              colors={[COLORS.primary, COLORS.secondary]}
+              style={styles.buttonGradient}>
               <Text style={styles.buttonText}>Get Started</Text>
               <Ionicons
                 name="arrow-forward"
@@ -164,10 +162,10 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: FONTS.sizes.md,
-    color: COLORS.darkMuted, // Changed from #666 to COLORS.darkMuted
+    color: COLORS.darkMuted,
     textAlign: "center",
     marginBottom: SPACING.xl,
-    lineHeight: 24, // Adjusted for better readability
+    lineHeight: 24,
   },
   featuresContainer: {
     width: "100%",
@@ -215,7 +213,7 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 50,
-    borderRadius: 25,
+    borderRadius: 16,
     overflow: "hidden",
     width: "100%",
     maxWidth: 300,

@@ -8,11 +8,12 @@ import {
   Image,
   Animated,
   Easing,
+  Modal,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Location from "expo-location";
 import * as Haptics from "expo-haptics";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import useStepStore from "../../src/store/useStepStore";
 import TrackedMap from "../../components/TrackedMap";
@@ -23,7 +24,7 @@ import { Region } from "react-native-maps";
 
 const LOCATION_TASK_NAME = "location-tracking";
 
-// Helper function to calculate distance between two coordinates
+// Helper function to calculate distance between two coordinates (Haversine formula)
 function calculateDistance(
   lat1: number,
   lon1: number,
@@ -41,6 +42,35 @@ function calculateDistance(
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in kilometers
+}
+
+// Helper function to format duration
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  return [
+    hours.toString().padStart(2, "0"),
+    minutes.toString().padStart(2, "0"),
+    secs.toString().padStart(2, "0"),
+  ].join(":");
+}
+
+// Helper function to calculate total distance from coordinates array
+function calculateTotalDistance(
+  coordinates: { lat: number; lon: number; timestamp: number }[]
+): number {
+  if (!coordinates || coordinates.length < 2) return 0;
+
+  let totalDistance = 0;
+  for (let i = 1; i < coordinates.length; i++) {
+    const prev = coordinates[i - 1];
+    const curr = coordinates[i];
+    totalDistance += calculateDistance(prev.lat, prev.lon, curr.lat, curr.lon);
+  }
+
+  return totalDistance;
 }
 
 // Background location tracking task
@@ -87,8 +117,8 @@ TaskManager.defineTask(
               newCoord.lat,
               newCoord.lon
             );
-            // Only add if moved at least 2 meters
-            if (distance < 0.002) {
+            // Only add if moved at least 3 meters
+            if (distance < 0.003) {
               continue;
             }
           }
@@ -117,8 +147,6 @@ TaskManager.defineTask(
     return Promise.resolve();
   }
 );
-
-// Removed unused step tracking task to prevent memory leaks
 
 export default function PathTrackingScreen() {
   const {
@@ -190,7 +218,8 @@ export default function PathTrackingScreen() {
         useNativeDriver: true,
       }).start();
     });
-  }, [isTracking]); // Pulsing animation for the icon
+  }, [isTracking]);
+
   useEffect(() => {
     if (isMapLoading) {
       Animated.loop(
@@ -238,6 +267,7 @@ export default function PathTrackingScreen() {
       }
     };
   }, [isTracking, activeSession]);
+
   // Step counter effect with background monitoring
   useEffect(() => {
     let backgroundStepInterval: ReturnType<typeof setInterval> | null = null;
@@ -483,19 +513,42 @@ export default function PathTrackingScreen() {
     } catch (error) {
       Alert.alert("Error", "Failed to start path tracking");
     }
-  }; // Handle stop tracking button press
+  };
+  // State for save confirmation modal
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmModalMessage, setConfirmModalMessage] = useState("");
+  const [pendingStop, setPendingStop] = useState(false);
+  // Helper to check if session is too short/insignificant
+  const isSessionTooShort = () => {
+    if (!activeSession) return false;
+    const steps = activeSession.steps || 0;
+    const coords = activeSession.coordinates || [];
+    const distance = calculateTotalDistance(coords);
+    const duration = (Date.now() - activeSession.startTime) / 1000;
+    return steps < 100 || distance < 0.1 || duration < 60 || coords.length < 5;
+  };
+  // Modified stop tracking handler
   const handleStopTracking = async () => {
+    if (isSessionTooShort()) {
+      setConfirmModalMessage(
+        "This walk was very short. Do you want to save it, or would you rather delete it?"
+      );
+      setShowConfirmModal(true);
+      setPendingStop(true);
+      return;
+    }
+    await actuallyStopTracking();
+  };
+
+  // Actual stop logic
+  const actuallyStopTracking = async () => {
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Get current session data before stopping
       const currentSession = activeSession;
       if (currentSession) {
-        const sessionDuration = (Date.now() - currentSession.startTime) / 1000;
-        const coordinatesCount = currentSession.coordinates?.length || 0;
         const actualDistance = calculateTotalDistance(
           currentSession.coordinates || []
         );
-        // Save the calculated distance to the session before stopping
         updateActiveSession({ distance: actualDistance });
       }
       if (locationWatcherRef.current) {
@@ -509,6 +562,24 @@ export default function PathTrackingScreen() {
     } catch (error) {
       Alert.alert("Error", "Failed to stop path tracking");
     }
+  };
+  // Add this helper to discard session without saving
+  const discardSession = async () => {
+    if (locationWatcherRef.current) {
+      locationWatcherRef.current.remove();
+      locationWatcherRef.current = null;
+    }
+    // Clear active session and tracking state, do not save
+    updateActiveSession({});
+    // Also set activeSession to null and isTracking to false
+    useStepStore.getState().updateActiveSession({});
+    // Use stopTracking but prevent it from saving: manually clear state
+    // (stopTracking in store saves, so we avoid calling it here)
+    // Instead, clear activeSession and isTracking directly
+    useStepStore.setState({ activeSession: null, isTracking: false });
+    await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+    setIsMapLoading(true);
+    getUserLocation();
   };
 
   // If there's an error with permissions
@@ -636,9 +707,7 @@ export default function PathTrackingScreen() {
             onPress={handleStopTracking}>
             <LinearGradient
               colors={["#ff4757", "#ff3838"]}
-              style={styles.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}>
+              style={styles.buttonGradient}>
               <MaterialIcons
                 name="stop"
                 size={28}
@@ -649,37 +718,81 @@ export default function PathTrackingScreen() {
           </TouchableOpacity>
         )}
       </View>
+      {/* Confirm Save Modal */}
+      <Modal
+        visible={showConfirmModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <LinearGradient
+              colors={GRADIENTS.storyCard}
+              style={styles.modalGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}>
+              <View style={styles.modalContent}>
+                <Ionicons
+                  name="warning"
+                  size={48}
+                  color={COLORS.danger}
+                  style={styles.modalIcon}
+                />
+                <Text style={styles.modalTitle}>Are you sure?</Text>
+                <Text style={styles.modalMessage}>{confirmModalMessage}</Text>
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={async () => {
+                      setShowConfirmModal(false);
+                      setPendingStop(false);
+                      if (isTracking && activeSession) {
+                        await actuallyStopTracking();
+                      }
+                    }}>
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.secondary]}
+                      style={styles.buttonGradient}>
+                      <Text style={styles.modalButtonPrimaryText}>
+                        Save Anyway
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={async () => {
+                      setShowConfirmModal(false);
+                      setPendingStop(false);
+                      await discardSession();
+                    }}>
+                    <LinearGradient
+                      colors={["#ff4757", "#ff3838"]}
+                      style={styles.modalButtonPrimary}>
+                      <Text style={styles.modalButtonPrimaryText}>
+                        Delete Session
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalButton}
+                    onPress={() => {
+                      setShowConfirmModal(false);
+                      setPendingStop(false);
+                    }}>
+                    <View style={styles.modalButtonSecondary}>
+                      <Text style={styles.modalButtonSecondaryText}>
+                        Cancel
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
-}
-
-// Helper function to format duration
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  return [
-    hours.toString().padStart(2, "0"),
-    minutes.toString().padStart(2, "0"),
-    secs.toString().padStart(2, "0"),
-  ].join(":");
-}
-
-// Helper function to calculate total distance from coordinates array
-function calculateTotalDistance(
-  coordinates: { lat: number; lon: number; timestamp: number }[]
-): number {
-  if (!coordinates || coordinates.length < 2) return 0;
-
-  let totalDistance = 0;
-  for (let i = 1; i < coordinates.length; i++) {
-    const prev = coordinates[i - 1];
-    const curr = coordinates[i];
-    totalDistance += calculateDistance(prev.lat, prev.lon, curr.lat, curr.lon);
-  }
-
-  return totalDistance;
 }
 
 const styles = StyleSheet.create({
@@ -757,7 +870,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: "60%",
     overflow: "hidden",
-    // Removed shadow and elevation for a cleaner look
   },
   stopButton: {
     borderRadius: 16,
@@ -765,7 +877,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: "60%",
     overflow: "hidden",
-    // Removed shadow and elevation for a cleaner look
   },
   buttonGradient: {
     flexDirection: "row",
@@ -794,7 +905,7 @@ const styles = StyleSheet.create({
     color: COLORS.warning,
     textAlign: "center",
     margin: 20,
-  }, // Loading effect styles
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -827,5 +938,77 @@ const styles = StyleSheet.create({
     color: COLORS.darkMuted,
     fontSize: FONTS.sizes.sm,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SPACING.lg,
+  },
+  modalContainer: {
+    width: "100%",
+    maxWidth: 400,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+  },
+  modalGradient: {
+    padding: SPACING.xl,
+  },
+  modalContent: {
+    alignItems: "center",
+  },
+  modalIcon: {
+    marginBottom: SPACING.lg,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: COLORS.white,
+    marginBottom: SPACING.md,
+    textAlign: "center",
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: COLORS.darkMuted,
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: SPACING.xl,
+  },
+  modalButtons: {
+    flexDirection: "column",
+    gap: SPACING.md,
+    width: "100%",
+  },
+  modalButton: {
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  modalButtonSecondary: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    backgroundColor: COLORS.darkCard,
+    borderWidth: 1,
+    borderColor: COLORS.darkBorder,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  modalButtonSecondaryText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
+  },
+  modalButtonPrimary: {
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    alignItems: "center",
+    borderRadius: 12,
+  },
+  modalButtonPrimaryText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.white,
   },
 });

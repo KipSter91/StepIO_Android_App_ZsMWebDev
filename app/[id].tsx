@@ -282,19 +282,6 @@ export default function ActivityDetailsScreen() {
         </View>
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton}>
-            <LinearGradient
-              colors={[COLORS.primary, COLORS.secondary]}
-              style={styles.actionButtonGradient}>
-              <Ionicons
-                name="share"
-                size={20}
-                color={COLORS.white}
-              />
-              <Text style={styles.actionButtonText}>Share Activity</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handleDeleteActivity}>
@@ -351,10 +338,8 @@ export default function ActivityDetailsScreen() {
                     style={styles.modalButton}
                     onPress={confirmDelete}>
                     <LinearGradient
-                      colors={[COLORS.danger, "#CC0000"]}
-                      style={styles.modalButtonPrimary}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}>
+                      colors={["#ff4757", "#ff3838"]}
+                      style={styles.modalButtonPrimary}>
                       <Text style={styles.modalButtonPrimaryText}>Delete</Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -470,12 +455,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.xs,
   },
   statCard: {
     width: (width - SPACING.lg * 2 - SPACING.md) / 2,
     borderRadius: 16,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.darkBorder,
     overflow: "hidden",
@@ -562,19 +547,6 @@ const styles = StyleSheet.create({
   actionButton: {
     borderRadius: 12,
     overflow: "hidden",
-  },
-  actionButtonGradient: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.xl,
-    gap: SPACING.md,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.white,
   },
   actionButtonSecondary: {
     flexDirection: "row",

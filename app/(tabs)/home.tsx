@@ -142,8 +142,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={[COLORS.primary]} // Android szín
-            progressBackgroundColor={COLORS.darkCard} // Android háttérszín (opcionális)
+            colors={[COLORS.primary]}
+            progressBackgroundColor={COLORS.darkCard}
           />
         }>
         {/* Welcome section */}
